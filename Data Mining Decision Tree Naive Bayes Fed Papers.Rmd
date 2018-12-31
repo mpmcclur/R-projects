@@ -1,0 +1,129 @@
+---
+title: "HW_5_McClure_Matt"
+author: "Matt McClure"
+date: "August 26, 2018"
+output: word_document
+---
+Introduction:
+The general problem in this assignment is to compare two classification techniques, decision trees and probabilistic naive Bayes. The subject of this comparison is the digit recognizer data. First, I will employ the decision model, which will be loosely based, but featuring different parameters, to the previous decision tree assignment. The code used for naive Bayes modeling will be trial-and-error. First, the data will be loaded in, and then decision tree and naive Bayes models will be constructed.
+```{r Import Data}
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(e1071)
+library(caret)
+library(C50)
+library(dplyr)
+library(prediction)
+require(caTools)
+require(spls)
+library(ipred)
+library(ElemStatLearn)
+library(klaR)
+text_train <- read.csv("C:/Users/Matt/Desktop/IST565/Datasets/Kaggle-digit-train.csv")
+text_test <- read.csv("C:/Users/Matt/Desktop/IST565/Datasets/Kaggle-digit-test.csv")
+```
+Construct a decision tree model.
+```{r Decision Tree}
+train_index <- createDataPartition(text_train$label, p = 0.5, list = FALSE) #50% of data from dataset and 50% for evaluation
+text_train <- text_train[train_index, ]
+text_test <- text_train[-train_index, ]
+set.seed(70)
+text_decision_model <- rpart(label ~.,text_train)
+predict.tree <- predict(text_decision_model, newdata = text_test, method = "class")
+predict.tree <- round(predict.tree,digits=0) #round outputs
+text_table <- table(factor(predict.tree, levels=min(text_test$label):max(text_test$label)), 
+      factor(text_test$label, levels=min(text_test$label):max(text_test$label)))
+confusionMatrix(text_table) #accuracy is 27%, which isn't great.
+#We can also calculate the root-mean-square-error, which may be telling of our setup.
+```
+Recall that the RMSE is given by
+$$
+RMSE =\sqrt{\frac{1}{N} \sum_{i=1}^{N} (\hat{\theta_i}-\theta_i)^2},
+$$
+which is a Brier score that tests the accuracy of a probability forecast. The closer the RMSE is to zero, the more accurate the forecast.
+```{r}
+#Let's incorporate pre-pruning parameters and again determine the error.
+set.seed(70)
+text_decision_preprune <- rpart(label ~ ., data = text_train,control = rpart.control(minsplit = 1, type = "prob", minbucket = 0, maxdepth = 30))
+#prediction test
+predict.tree2 <- predict(text_decision_preprune, newdata = text_test, method = "class")
+predict.tree2 <- round(predict.tree2,digits=0) #round outputs
+text_table2 <- table(factor(predict.tree2, levels=min(text_test$label):max(text_test$label)), 
+      factor(text_test$label, levels=min(text_test$label):max(text_test$label)))
+confusionMatrix(text_table2) #accuracy is 10%, which is much worse than what we started with.
+
+res2 <- errorest(label~., data=text_train, model = rpart, predict = predict.tree2)
+res2 #RMSE reduced to ~2.89 -- an improvement, since it's closer to zero.
+
+
+#Finally, observe the post-pruning model where the CP parameter is used:
+text_decision_postprune <- prune(text_decision_model, cp = 0.011, type = "prob")
+#CV and RMSE:
+predict.tree3 <- predict(text_decision_postprune, newdata = text_test, method = "vector")
+predict.tree3 <- round(predict.tree3,digits=0) #round outputs
+text_table3 <- table(factor(predict.tree3, levels=min(text_test$label):max(text_test$label)), 
+      factor(text_test$label, levels=min(text_test$label):max(text_test$label)))
+confusionMatrix(text_table3) #accuracy is 27%, which is no better than what we started with.
+
+res3 <- errorest(label~., data=text_train, model = rpart, predict = predict.tree3)
+res3 #RMSE increased to ~3.52, which is worse than the preprune model but marginally better than the original model. Nevertheless, this model should provide a better tree with more layers compared to the prepruned model.
+
+#Plot the decision tree model
+fancyRpartPlot(text_decision_postprune,digits=1)#digit paramter rounds output to whole numbers
+prp(text_decision_postprune,digits=1)
+#This decision tree model breaks down the conditions that would lead to numbers being predicted.
+
+```
+The simple decision tree model is constructed above with the predicted numbers, which have been rounded to the ones place. The tree and its sublayers identify the criteria by which the handwritten numbers are determined. Now we can move on to constructing a naive Bayes model, tune the parameters, calculate CV, and compare the results between both methods.
+
+```{r Naive Bayes (NB)}
+#The test and training datasets are already created, but now we need to create a validation dataset.
+#Convert integers of training and test sets into factors:
+text_train$label <- as.factor(text_train$label)
+text_test$label <- as.factor(text_test$label)
+
+#Since the datasets are so large, and since it takes a long time for R to create a model using the train function, we'll switch to the smaller dataset.
+text_train2 <- read.csv("C:/Users/Matt/Desktop/IST565/Datasets/Kaggle-digit-train-sample-small-1400.csv")
+text_test2 <- read.csv("C:/Users/Matt/Desktop/IST565/Datasets/Kaggle-digit-test-sample1000.csv")
+set.seed(120)
+text_train2$label <- as.factor(text_train2$label)
+text_test2$label <- as.factor(text_test2$label)
+
+#Construct a basic NB model
+set.seed(120)
+#Attempt one: use the train function to create a NB model using smaller 1400-sized dataset. The model takes too long to process (it never concludes).
+#Try to reduce size of data even further:
+dig_test2 <- text_train2[sample(1:nrow(text_train2), 400,replace=FALSE),]
+#After testing again, it still doesn't work -- I never get a result and the process never finishes. I have attempted numerous changes of parameters and data to no avail.
+#text_model_nb2 <- suppressWarnings(train(dig_test2$label ~ ., data = dig_test2, method = "nb",na.action=na.exclude))
+
+#Second attempt: model using naiveBayes function.
+text_model_nb <- naiveBayes(text_train$label ~.,data=text_train)
+#This model works with the original sized dataset.
+
+#Predict with NBC
+#Now that we have a model, we can predict. We will determine the probabilities using type "raw". I also employ a 10-fold CV test to compare with the decision tree model above.
+set.seed(120)
+#Split training data to reduce number of rows
+dig_test <- text_train[sample(1:nrow(text_train), 15000,replace=FALSE),]
+#Write prediction algorithm
+predict_nb1 <- suppressWarnings(predict(text_model_nb, newdata = dig_test, type = "class",trcontrol = trainControl(method = "cv", number = 10),na.action=na.exclude))
+#The output works and produces 15000 rows for each 0-9 number that is predicted.
+#Create table
+table(dig_test$label,predict_nb1)
+#Create confusion matrix:
+confusionMatrix(dig_test$label,predict_nb1)
+#Based on this, we see different measures of model performance, such as accuracy, kappa, and p-values. The accuracy is 52%, which is mediocre.
+
+#Attempt to fine-tune the model
+text_model_nb3 <- naiveBayes(text_train$label ~ ., data = text_train,
+    trcontrol = trainControl(method = "cv", number = 10),na.action=na.exclude,
+    tuneGrid = data.frame(fL = 1, usekernel = FALSE, adjust = 1)) #fL is a smoothing paramter that avoids the zero probability issue; userkernal = false means using normal dist.
+#View the prediction of the new model:
+predict_nb2 <- suppressWarnings(predict(text_model_nb3, newdata = dig_test, type = "class",na.action=na.exclude))
+confusionMatrix(dig_test$label,predict_nb1) #Accuracy increased by 1% and is 53%, which still isn't great, but it is higher than that which what achieved in the decision tree models.
+```
+Conclusion: Comparing the accuracies of the decision tree and naive Bayes algorithms, the NB algorithms have a higher model accuracy, with the highest accuracy reaching 53%. I also sought to incorporate another measure of the accuracy of the model, which is the RMSE, but I'm not confident the value that was calculated is meaningful. In addition, I could think of a way to incorporate that measure in the naive Bayes models.
+
+Thus, after many wasted hours of tinkering (!), my conclusion is that either the naive Bayes algorithm is more suitable with the Kaggle Digitizer dataset, or the decision tree models simply were not optimized enough. It's entirely possible that the decision tree algorithm is more appropriate for this dataset, but that is not demonstrated here.

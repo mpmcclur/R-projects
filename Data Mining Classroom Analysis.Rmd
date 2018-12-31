@@ -1,0 +1,102 @@
+---
+title: "HW_2_McClure_Matt"
+output: word_document
+---
+
+```{r setup}
+## Read in the data
+course <- read.csv("C:/Users/Matt/Desktop/IST565/Homework 2/data-storyteller.csv")
+library(ggplot2)
+library(psych)
+```
+##Variable prep & data aggregation:
+```{r variable prep}
+schoolA <- course[course$School=="A",] #shows only sections in school A
+schoolB <- course[course$School=="B",] #shows only sections in school B
+schoolC <- course[course$School=="C",] #shows only sections in school C
+schoolD <- course[course$School=="D",] #shows only sections in school D
+schoolE <- course[course$School=="E",] #shows only sections in school E
+#Or we can simply aggregate the data for each school:
+aggSchools <- aggregate(course[,3:8],list(Group.region=course$School),sum)
+#Let's remove Very Ahead, since there are no students in any school that are in this category.
+aggSchools <- aggSchools[, !(names(aggSchools)%in% c("Very.Ahead..5"))]
+#Note that this variable is removed for the rest of this analysis.
+```
+#Basic statistics
+```{r basic statistics}
+#Summary statistics of each category for each school:
+summary(schoolA[,3:6])
+summary(schoolB[,3:6])
+summary(schoolC[,3:6])
+summary(schoolD[,3:6])
+summary(schoolE[,3:6])
+
+#Use the pairs function for an overview of descriptive statistics for each category,
+#i.e., Middling, Behind. More.Behind, Very.Behind, and Completed:
+all <- cbind(aggSchools[,-1]) #Removes school variable
+pairs.panels(all)
+#Histograms of each category of each school are shown along the diagonal.
+#The bottom triangle shows scatterplots, which are not useful to us.
+#The upper triangle shows Pearson correlations (-1 to 1) between each category.
+#All categories are highly positively correlated; More.Behind and Very.Behind categories are perfectly correlated.
+
+#Total number of students in each school:
+sumA <- sum(schoolA$Middling..0,schoolA$Behind..1.5,schoolA$More.Behind..6.10,
+    schoolA$Very.Behind..11,schoolA$Completed) #932 students in school A
+sumB <- sum(schoolB$Middling..0,schoolB$Behind..1.5,schoolB$More.Behind..6.10,
+    schoolB$Very.Behind..11,schoolB$Completed) #446 students in school B
+sumC <- sum(schoolC$Middling..0,schoolC$Behind..1.5,schoolC$More.Behind..6.10,
+    schoolC$Very.Behind..11,schoolC$Completed) #85 students in school C
+sumD <- sum(schoolD$Middling..0,schoolD$Behind..1.5,schoolD$More.Behind..6.10,
+    schoolD$Very.Behind..11,schoolD$Completed) #22 students in school D
+sumE <- sum(schoolE$Middling..0,schoolE$Behind..1.5,schoolE$More.Behind..6.10,
+    schoolE$Very.Behind..11,schoolE$Completed) #116 students in school E
+#Now let's organize these results into a dataframe.
+sumAll <- data.frame(schoolSum1 = c("School A","School B","School C","School D","School E"), 
+                           schoolSum2 = c(sumA,sumB,sumC,sumD,sumE))
+#Plot showing the total number of students in each school:
+ggplot(sumAll, aes(x=schoolSum1,y=schoolSum2)) + geom_bar(stat = "identity", color="black",fill="white")+ coord_cartesian(ylim=c(0, 1000)) + scale_y_continuous(breaks=seq(0,1000,200)) +  labs(title = "Number of Students in School", x = "School", y = "Number")
+```
+#Looking deeper into the data
+```{r deeper look}
+#Where are most students in each school? Are most "middling" or "behind"?
+#We will group together the data and then create a histogram to compare each progress category of each school in a more detailed graph than the histograms generated above.
+sumSection <- c("Middling","Behind","More Behind","Very Behind","Completed")
+sumSectionA <- data.frame(sumSection,sumSectionsA = c(sum(schoolA$Middling..0),sum(schoolA$Behind..1.5),sum(schoolA$More.Behind..6.10),sum(schoolA$Very.Behind..11),sum(schoolA$Completed)))
+sumSectionB <- data.frame(sumSection,sumSectionsB = c(sum(schoolB$Middling..0),sum(schoolB$Behind..1.5),sum(schoolB$More.Behind..6.10),sum(schoolB$Very.Behind..11),sum(schoolB$Completed)))
+sumSectionC <- data.frame(sumSection,sumSectionsC = c(sum(schoolC$Middling..0),sum(schoolC$Behind..1.5),sum(schoolC$More.Behind..6.10),sum(schoolC$Very.Behind..11),sum(schoolC$Completed)))
+sumSectionD <- data.frame(sumSection,sumSectionsD = c(sum(schoolD$Middling..0),sum(schoolD$Behind..1.5),sum(schoolD$More.Behind..6.10),sum(schoolD$Very.Behind..11),sum(schoolD$Completed)))
+sumSectionE <- data.frame(sumSection,sumSectionsE = c(sum(schoolE$Middling..0),sum(schoolE$Behind..1.5),sum(schoolE$More.Behind..6.10),sum(schoolE$Very.Behind..11),sum(schoolE$Completed)))
+#Below are histograms of the number of students in each progress category of each school (note that the sections are combined per school):
+ggplot(sumSectionA, aes(x=sumSection,y=sumSectionsA)) + geom_histogram(stat="identity",bins=15, color="black",fill="white") + coord_cartesian(ylim=c(0, 500)) + scale_y_continuous(breaks=seq(0,500,50)) +  labs(title = "School A Progress Categories", x = "Progress Category", y = "Number")
+ggplot(sumSectionB, aes(x=sumSection,y=sumSectionsB)) + geom_histogram(stat="identity",bins=15, color="black",fill="white") + coord_cartesian(ylim=c(0, 250)) + scale_y_continuous(breaks=seq(0,250,25)) +  labs(title = "School B Progress Categories", x = "Progress Category", y = "Number")
+ggplot(sumSectionC, aes(x=sumSection,y=sumSectionsC)) + geom_histogram(stat="identity",bins=15, color="black",fill="white") + coord_cartesian(ylim=c(0, 50)) + scale_y_continuous(breaks=seq(0,50,10)) +  labs(title = "School C Progress Categories", x = "Progress Category", y = "Number")
+ggplot(sumSectionD, aes(x=sumSection,y=sumSectionsD)) + geom_histogram(stat="identity",bins=15, color="black",fill="white") + coord_cartesian(ylim=c(0, 10)) + scale_y_continuous(breaks=seq(0,10,1)) +  labs(title = "School D Progress Categories", x = "Progress Category", y = "Number")
+ggplot(sumSectionE, aes(x=sumSection,y=sumSectionsE)) + geom_histogram(stat="identity",bins=15, color="black",fill="white") + coord_cartesian(ylim=c(0, 70)) + scale_y_continuous(breaks=seq(0,70,10)) +  labs(title = "School E Progress Categories", x = "Progress Category", y = "Number")
+#From the plots above, we determine 3 things:
+#1. The majority of students in each school is behind.
+#2. The distribution of student performance is comparable across each school in that the lowest number of students comprise More Behind and Middling in increasing order.
+#3. In Schools A and D, more students are behind or very behind than completed, but in School B, C, and E, more students have completed than the course than those who are very behind.
+#But does this signal that Schools B, C, and E are doing the best?
+
+#To find out, let's first determine which school has the highest number of students who completed the course:
+meanA <- mean(schoolA$Completed) #An average of 11 students completed the course in school A.
+meanB <- mean(schoolB$Completed) #An average of 10 students completed the course in school B.
+meanC <- mean(schoolC$Completed) #An average of 6 students completed the course in school B.
+meanD <- mean(schoolD$Completed) #An average of 3 students completed the course in school B.
+meanE <- mean(schoolE$Completed) #An average of 27 students completed the course in school B.
+
+#Now we can determine which school has the best completion ration with respect to overall number of students:
+statSchoolA <- meanA/sumA #0.012
+statSchoolB <- meanB/sumB #0.023
+statSchoolC <- meanC/sumC #0.074
+statSchoolD <- meanD/sumD #0.136
+statSchoolE <- meanE/sumE #0.233
+#School E takes the cake, in that 23% of its students have completed the math course so far, and we can argue that School E is doing the best.
+```
+```{r conclusion}
+#We were able to aggregate the data to reduce the multiple rows and combine the sections of each class and each school.
+#We then reviewed basic descriptive statistics for each progress category in each school, finding that all the categories are strongly positively correlated.
+#The number of students in each school were summed and then used to show that most students were in School A, whereas School D housed the fewest students.
+#We generated more detailed histograms and reviewed the performance of each students in each school. The results? The majority of students in each school is behind, but School E is performing best since 23% of its students have completed the math course, which is considerably higher than any other school.
+#From here, we can attempt to determine which factors are influencing student performance in School E that is not in the other students. Perhaps it's the number of students, location, instructors, etc. Since we do not have more data pertaining to each school, we cannot provide deeper analysis to determine such influential factors.
