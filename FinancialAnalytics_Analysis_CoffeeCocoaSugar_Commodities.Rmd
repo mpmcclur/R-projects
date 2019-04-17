@@ -1,0 +1,623 @@
+---
+title: "Exploring the Markets of Soft Commodity"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+Business Context
+=======================================================================
+
+Column {.tabset}
+-----------------------------------------------------------------------
+
+### Photonics + Soft Commodities?
+
+In order to expand and increase R&D of niche ultrafast lasers, LaserMat Corp is looking to invest in a soft market commodity, such as green coffee arabica, sugar, or cocoa beans. The board of LaserMat wants to take advantage of backwardation of one of these commodities to secure future funds for more advanced research, design, and manufacturing of state-of-the-art picosecond lasers. LaserMat anticipates this the science of technology of such lasers to exponentially exand in both military defense and academic (applied physics) regimes by the year 2030. The more liquid assets LaserMat has, the faster it can accelerate research and experimentation on picosecond lasers. Ideally this market will not cost much to entertain and will be a steady, positive source of income for decades to come. We are asked to determine how far 100 million dollars can take us to enter one of the markets.
+
+Specifically, we are to:
+
+1.  Retrieve and analyze data about potential commodities into which to diversify.
+2.  Compare all three commodities to determine their historic and future trends as well as volatility.
+3.  Determine the optimal combination of cocoa beans, sugar, or coffee to trade.
+
+Additional details:
+
+1.  Global price data frequency is monthly (from 1980 to present day), are derived from the U.S. Bureau of Labor Statistics, serve as a global representation of the respective commodity prices, and are priced in U.S. cents per pound.
+2.	Customers: farmers, commercial purchasers, and speculative investors. NOTE: We assume current LaserMat Corp. customers will not be consumers of this new commodity, due to the starkly different market segment.
+
+### Key Business Questions
+
+1.  Explore aspects of the market for all three commodities to propose to the board of LaserMat which is the best to penetrate.
+
+2.  Determine how revenue and/or expenses move in time, and, if possible, identify the drivers of a commodity. Each commodity has different drivers that increase or decrease revenue.
+
+3.  How much capital would the LaserMat need to penetrate into this market?
+
+4.  Briefly explore the financial portfolio of the commodity of choice.
+
+Data at a Glance
+=======================================================================
+
+Column {data-width=600}
+-----------------------------------------------------------------------
+The kernel density function shows the general shape of the direction of cocoa, sugar, and Arabica coffee, while the time series plot shows the (absolute) size of returns of each commodity, with the most erratic being coffee. Normalized commodity prices are shown from 1980 to 2017. There appears to be a loose trend among the curves but not enough for us to claim the existence of any correlation.
+
+```{r Data and Initial Exploration}
+#install.packages("pacman")
+rm(list = ls())
+pacman::p_load(flexdashboard, dplyr, psych, tm,caret, mlbench, rpart, rpart.plot, rattle, e1071, C50, dplyr, prediction, caTools, spls, ipred, ElemStatLearn, klaR, randomForest, psych, plotly, stringr, methods, httr, rgdal, tidyr, permutations, leaflet, ggplot2, shiny, QRM, qrmdata, xts, zoo, ggfortify, psych, matrixStats, moments, quantreg, quadprog, scales, tidyverse, magick, lubridate)
+
+prices <- na.omit(read.csv("C:/Users/Matt/Desktop/FIN654/Project/CoffeeCocoaSugar_Price.csv", header = TRUE))
+
+years <- year(as.Date(prices$DATE, "%m/%d/%Y"))
+years_cocoa <- tapply(prices$Cocoa, years, sum)
+years_sugar <- tapply(prices$Sugar, years, sum)
+years_coffee <- tapply(prices$Arabica.Coffee, years, sum)
+years <- unique(years)
+years_cocoa <- years_cocoa[1:38]
+years_cocoa <- data.frame(years,years_cocoa)
+#Normalize
+years_cocoa$years_cocoa <- (years_cocoa$years_cocoa-min(years_cocoa$years_cocoa))/(max(years_cocoa$years_cocoa)-min(years_cocoa$years_cocoa))
+years_sugar <- years_sugar[1:38]
+years_sugar <- data.frame(years,years_sugar)
+years_sugar$years_sugar <- (years_sugar$years_sugar-min(years_sugar$years_sugar))/(max(years_sugar$years_sugar)-min(years_sugar$years_sugar))
+years_coffee <- years_coffee[1:38]
+years_coffee <- data.frame(years,years_coffee)
+years_coffee$years_coffee <- (years_coffee$years_coffee-min(years_coffee$years_coffee))/(max(years_coffee$years_coffee)-min(years_coffee$years_coffee))
+colnames(years_cocoa) <- c("DATE", "Cocoa")
+colnames(years_sugar) <- c("DATE", "Sugar")
+colnames(years_coffee) <- c("DATE", "Arabica.Coffee")
+# Compute log differences percent using as.matrix to force numeric type
+p_cocoa <- ggplot(years_cocoa, aes(x = DATE, y = Cocoa, 
+    group = 1)) + geom_line(colour = "blue")
+p_sugar <- ggplot(years_sugar, aes(x = DATE, y = Sugar, 
+    group = 1)) + geom_line(stat = "identity", 
+    colour = "green")
+p_coffee <- ggplot(years_coffee, aes(x = DATE, y = Arabica.Coffee, group = 1)) + 
+    geom_line(stat = "identity", colour = "darkorange")
+com_all <- merge(years_cocoa, years_sugar, by=c("DATE"))
+com_all <- merge(com_all,years_coffee, by=c("DATE"))
+
+p_all <- ggplot(com_all, aes(colour=variable)) + 
+    geom_line(data = com_all, aes(DATE, 
+        Cocoa, colour = "Cocoa")) + 
+    geom_line(data = com_all, aes(DATE, 
+        Sugar, colour = "Sugar")) + 
+    geom_line(data = com_all, aes(DATE, 
+        Arabica.Coffee, colour = "Coffee")) + coord_cartesian(xlim=c(1980, 2017)) + scale_x_continuous(breaks=seq(1980,2017,5)) + ggtitle("Normalized Commodity Prices") +     theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Year", y = "Normalized Price (A.U.)")
+
+# Functions and code structure below are borrowed from previous project 3.
+
+data.r <- diff(log(as.matrix(prices[, -1]))) * 100
+# Create size and direction
+size <- na.omit(abs(data.r)) # size is indicator of volatility
+#head(size)
+colnames(size) <- paste(colnames(size),".size", sep = "") # Teetor
+direction <- ifelse(data.r > 0, 1, ifelse(data.r < 0, -1, 0)) # another indicator of volatility
+colnames(direction) <- paste(colnames(direction),".dir", sep = "")
+# Convert into a time series object: 
+# 1. Split into date and rates
+dates <- as.Date(prices$DATE[-1], "%m/%d/%Y")
+dates.chr <- as.character(prices$DATE[-1])
+values <- cbind(data.r, size, direction)
+data.df <- data.frame(dates = dates, returns = data.r, size = size, direction = direction)
+data.df.nd <- data.frame(dates = dates.chr, returns = data.r, size = size, direction = direction, stringsAsFactors = FALSE) 
+# non-coerced dates for subsetting on non-date columns
+# 2. Make an xts object with row names equal to the dates
+data.xts <- na.omit(as.xts(values, dates)) #order.by=as.Date(dates, "%d/%m/%Y")))
+#str(data.xts)
+data.zr <- as.zooreg(data.xts)
+returns <- data.xts
+data.zr <- as.zooreg(data.xts) #9 columns; lets trim it down to 3 sizes.
+data.zr.short <- data.zr[,c(4:6)]
+plot(density(direction),col="blue")
+returns <- data.xts
+returns.short <- returns[,c(4:6)]
+title.chg <- "Coffee, Cocoa, and Sugar Commodity Returns"
+autoplot.zoo(returns.short) + ggtitle(title.chg)
+p_all
+```
+
+Market Risk
+=======================================================================
+The nature of the markets and visualization of volatility are presented.
+
+Column {.tabset}
+-----------------------------------------------------------------------
+### Preliminary Questions
+Important questions to be answered in our analysis.
+
+3.  What is the expected shortfall, or metric mean for risk capital, of adopting one of the commodities?
+
+4.  What sorts of returns can we expect based on the history of the market?
+
+5.  What statistical information can we glean to help us to determine which soft commodity market to penetrate?
+
+6.  What does the probability density vs. returns plot for the commodities look like?
+
+7.  With respect to that plot, what does the tail look like, and what does it tell us about expected shortfall (ES) and value at risk (VaR)?
+
+### Overview of Commodities in the Market
+The intercept and log graphs plot the commodity prices vs. the [logarithmic] standard deviations of the volatility. The red lines are the least squares estimate and our 95% confidence interval (i.e., the percentage at which we must be correct 95% of the time), which are derived from rolling functions. Interestingly, the interval window for the intercepts of sugar and coffee are particularly good (virtually flat), where the majority of points fall within the confidence.
+
+```{r }
+
+# Functions and code structure below are borrowed from previous project 3.
+
+# PAGE: Market risk 
+corr_rolling <- function(x) {	
+  dim <- ncol(x)	
+  corr_r <- cor(x)[lower.tri(diag(dim), diag = FALSE)]	
+  return(corr_r)	
+}
+vol_rolling <- function(x){
+  library(matrixStats)
+  vol_r <- colSds(x)
+  return(vol_r)
+}
+ALL.r <- data.xts[, 1:3]
+window <- 90 #reactive({input$window})
+corr_r <- rollapply(ALL.r, width = window, corr_rolling, align = "right", by.column = FALSE)
+colnames(corr_r) <- c("cocoa.sugar", "cocoa.coffee", "sugar.coffee")
+vol_r <- rollapply(ALL.r, width = window, vol_rolling, align = "right", by.column = FALSE)
+colnames(vol_r) <- c("cocoa.vol", "coffee.vol", "sugar.vol")
+year <- format(index(corr_r), "%Y")
+r_corr_vol <- merge(ALL.r, corr_r, vol_r, year)
+library(quantreg)
+taus <- seq(.05,.95,.05)	# Roger Koenker UI Bob Hogg and Allen Craig
+fit.rq.cocoa.sugar <- rq(log(cocoa.sugar) ~ log(cocoa.vol), tau = taus, data = r_corr_vol)	
+fit.rq.cocoa.coffee <- rq(log(cocoa.coffee) ~ log(cocoa.vol), tau = taus, data = r_corr_vol)	
+fit.rq.sugar.coffee <- rq(log(sugar.coffee) ~ log(sugar.vol), tau = taus, data = r_corr_vol)	
+# Some test statements	
+cocoa.sugar.summary <- summary(fit.rq.cocoa.sugar, se = "boot")
+plot(cocoa.sugar.summary)
+cocoa.coffee.summary <- summary(fit.rq.cocoa.coffee, se = "boot")
+plot(cocoa.coffee.summary)
+sugar.coffee.summary <- summary(fit.rq.sugar.coffee, se = "boot")
+plot(sugar.coffee.summary)
+```
+
+The market percent changes and volatility size and direction for cocoa are milder (i.e., have smaller peaks) compared to sugar and coffee. Though this looks good for cocoa, we can expect smaller returns compared to returns of sugar or coffee. Does higher volatility equal lower returns?
+
+``` {r}
+title.chg <- "Cocoa-Sugar-Coffee Market Percent Changes"
+title.chg2 <- "Cocoa-Sugar-Coffee Market Percent Changes -- Sizes"
+autoplot.zoo(data.xts[,1:3]) + ggtitle(title.chg)
+autoplot.zoo(data.xts[,4:6]) + ggtitle(title.chg2)
+```
+
+Autocorrelations among sizes and returns of each commodity are also shown. Points of interest include the confidence intervals (again denoted by dotted lines) as well as expecting 5% of the data to fall within the interval and have non-zero lag (i.e., lagged regression in the time domain). None of the three commodities show anything out of the ordinary.
+
+```{r }
+acf(coredata(data.xts[,1:3])) # returns
+acf(coredata(data.xts[,4:6])) # sizes
+```
+
+Cross-correlation functions of cocoa and sugar as well as sugar and coffee are presented to examine if, in terms of volatility, a change in one market leads to changes in the another. The volatility of cocoa and sugar are highly positively correlated, with lags 6 to 14, meaning the volatility of one will be met by the other months later. Another stark contrast is that both cocoa and sugar are negatively correlated with coffee -- there are strong peaks and lags all around. This seems to suggest that the drivers of the volatility of coffee are inversely proportional, with a large temporal lag, to those of cocoa and sugar. Although this information can help us, even if we notice an event in one commodity that may affect our chosen commodity, it will be difficult to direclty translate the lags shown here into a precise time at which the volatilities will occur. They may serve more as a "brace for impact" measure.
+
+```{r }
+
+# Functions and code structure below are borrowed from previous project 3.
+
+one <- ts(data.zr[,1])
+two <- ts(data.zr[,2])
+three <- ts(data.zr[,3])
+title.chg <- "Cocoa vs. Sugar"
+title.chg2 <- "Cocoa vs. Coffee"
+title.chg3 <- "Sugar vs. Coffee"
+ccf(one, two, main = title.chg, lag.max = 20, xlab = "", ylab = "", ci.col = "red")
+ccf(one, three, main = title.chg2, lag.max = 20, xlab = "", ylab = "", ci.col = "red")
+ccf(two, three, main = title.chg3, lag.max = 20, xlab = "", ylab = "", ci.col = "red")
+# build function to repeat these routines
+run_ccf <- function(one, two, main = title.chg, lag = 20, color = "red"){
+  # one and two are equal-length series
+  # lag is number of lags in cross-correlation
+  # color is color of dashed confidence interval bounds
+  stopifnot(length(one) == length(two))
+  one <- ts(one)
+  two <- ts(two)
+  main <- main
+  lag <- lag
+  color <- color
+  ccf(one, two, main = main, lag.max = lag, xlab = "", ylab = "", ci.col = color)
+}
+run_ccf2 <- function(one, three, main = title.chg2, lag = 20, color = "red"){
+  stopifnot(length(one) == length(two))
+  one <- ts(one)
+  three <- ts(three)
+  main <- main
+  lag <- lag
+  color <- color
+  ccf(one, three, main = main, lag.max = lag, xlab = "", ylab = "", ci.col = color)
+}
+run_ccf3 <- function(two, three, main = title.chg3, lag = 20, color = "red"){
+  stopifnot(length(one) == length(two))
+  two <- ts(two)
+  three <- ts(three)
+  main <- main
+  lag <- lag
+  color <- color
+  ccf(two, three, main = main, lag.max = lag, xlab = "", ylab = "", ci.col = color)
+}
+title <- "Cocoa-Sugar: volatility"
+title2 <- "Cocoa-Coffee: volatility"
+title3 <- "Sugar-Coffee: volatility"
+# now for volatility (sizes)
+one <- abs(data.zr[,1])
+two <- abs(data.zr[,2])
+three <- abs(data.zr[,3])
+cocoa_sugar_vol <- run_ccf(one, two, main = title, lag = 20, color = "red")
+cocoa_coffee_vol <- run_ccf(one, three, main = title2, lag = 20, color = "red")
+sugar_coffee_vol <- run_ccf(two, three, main = title3, lag = 20, color = "red")
+```
+
+These two tables provide descriptive statistics between commodity direction (first table) as well as commodity size (volatility, second table). Coffee has the largest kurtosis and skewness among the three. Each commodity shows a mean negative direction.
+This information, along with what we have discovered in the plots above, indicate that coffee is the misfit between the three, in that it deviates most independently. We will need to observe the losses in order to translate this behavior to dollars.
+
+```{r }
+# Functions and code structure below are borrowed from previous project 3.
+# inputs: r vector
+# outputs: list of scalars (mean, sd, median, skewness, kurtosis)
+data_moments <- function(prices){
+  library(moments)
+  library(matrixStats)
+  mean.r <- colMeans(prices)
+  median.r <- colMedians(prices)
+  sd.r <- colSds(prices)
+  IQR.r <- colIQRs(prices)
+  skewness.r <- skewness(prices)
+  kurtosis.r <- kurtosis(prices)
+  result <- data.frame(mean = mean.r, median = median.r, std_dev = sd.r, IQR = IQR.r, skewness = skewness.r, kurtosis = kurtosis.r)
+  return(result)
+}
+answer <- data_moments(data.xts[, 1:3])
+answer <- round(answer, 4)
+knitr::kable(answer)
+answer2 <- data_moments(data.xts[, 4:6])
+answer2 <- round(answer2, 4)
+knitr::kable(answer2)
+```
+
+### Loss Analysis
+What do the losses for each commodity look like and how much capital would the LaserMat need for adoption of one commodity?
+
+Plotting the expected shortfall allows us to see what are our expected losses. Plotted are probability density vs. returns plots for cocoa, sugar, and coffee.  For cocoa, ES = 12.19 and VaR = 10.12; for sugar, ES = 14.8 and VaR = 15.18; and for coffee, ES = 13.42 and VaR = 12.33. The predicted profit is less for cocoa and highest for coffee. Interestingly, sugar and coffee show larger kurtosis on the right tail compared to the left (the left-skewness is apparent here). We can also see that coffee shows less loss compared to cocoa and sugar.
+
+Aside from the ES and VAR callouts, the kurtosis is also of interest, since that shows us the volatility. Cocoa shows is least volatile, while coffee is the most -- this concurs with previous analyses. Sugar doesn't get away scot-free; the right tail of sugar is also hefty.
+
+```{r }
+# Functions and code structure below are borrowed from previous project 3.
+
+returns1 <- returns[,1] # only looking at cocoa
+colnames(returns1) <- "Returns" # collection to coerce column name for df
+returns1.df <- data.frame(Returns = returns1[,1], Distribution = rep("Historical", each = length(returns1)))
+
+returns2 <- returns[,2] # only looking at sugar
+colnames(returns2) <- "Returns"
+returns2.df <- data.frame(Returns = returns2[,1], Distribution = rep("Historical", each = length(returns2)))
+
+returns3 <- returns[,3] # only looking at arabica coffee
+colnames(returns3) <- "Returns"
+returns3.df <- data.frame(Returns = returns3[,1], Distribution = rep("Historical", each = length(returns3)))
+  
+alpha <- 0.95 # 95% of the time something is going to happen
+  
+# Value at Risk
+VaR.hist <- quantile(returns1,alpha)
+VaR.hist2 <- quantile(returns2,alpha)
+VaR.hist3 <- quantile(returns3,alpha)
+VaR.text <- paste("Value at Risk =", round(VaR.hist, 2))
+VaR.text2 <- paste("Value at Risk =", round(VaR.hist2, 2))
+VaR.text3 <- paste("Value at Risk =", round(VaR.hist3, 2))
+
+# Determine the max y value of the density plot.
+VaR.y <- max(density(returns1.df$Returns)$y) #this is just a y coordinate
+VaR.y2 <- max(density(returns2.df$Returns)$y)
+VaR.y3 <- max(density(returns3.df$Returns)$y)
+#look at all cocoa returns greater than VaR.hist
+ES.hist <- median(returns1[returns1 > VaR.hist])
+ES.text <- paste("Expected Shortfall =", round(ES.hist, 2))
+p <- ggplot(returns1.df, aes(x = Returns, fill = Distribution)) + geom_density(alpha = 0.5) + 
+    geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "firebrick1") + 
+    geom_vline(aes(xintercept = ES.hist), size = 1, color = "firebrick1") +
+    ggplot2::annotate("text", x = 2+VaR.hist, y = VaR.y*1.05, label = VaR.text) +
+    ggplot2::annotate("text", x = 1.5+ES.hist, y = VaR.y*1.1, label = ES.text) + scale_fill_manual( values = "dodgerblue4") + ggtitle("Density Function of Returns (Cocoa)")
+#look at all sugar returns greater than VaR.hist
+ES.hist2 <- median(returns2[returns2 > VaR.hist])
+ES.text2 <- paste("Expected Shortfall =", round(ES.hist2, 2))
+p2 <- ggplot(returns2.df, aes(x = Returns, fill = Distribution)) + geom_density(alpha = 0.5) + 
+    geom_vline(aes(xintercept = VaR.hist2), linetype = "dashed", size = 1, color = "firebrick1") + 
+    geom_vline(aes(xintercept = ES.hist2), size = 1, color = "firebrick1") +
+    ggplot2::annotate("text", x = 2+ VaR.hist2, y = VaR.y2*1.05, label = VaR.text2) +
+    ggplot2::annotate("text", x = 1.5+ ES.hist2, y = VaR.y2*1.1, label = ES.text2) + scale_fill_manual( values = "dodgerblue4") + ggtitle("Density Function of Returns (Sugar)")
+#look at all coffee returns greater than VaR.hist
+ES.hist3 <- median(returns3[returns3 > VaR.hist])
+ES.text3 <- paste("Expected Shortfall =", round(ES.hist3, 2))
+p3 <- ggplot(returns3.df, aes(x = Returns, fill = Distribution)) + geom_density(alpha = 0.5) + 
+    geom_vline(aes(xintercept = VaR.hist3), linetype = "dashed", size = 1, color = "firebrick1") + 
+    geom_vline(aes(xintercept = ES.hist3), size = 1, color = "firebrick1") +
+    ggplot2::annotate("text", x = 2+ VaR.hist3, y = VaR.y3*1.05, label = VaR.text3) +
+    ggplot2::annotate("text", x = 1.5+ ES.hist3, y = VaR.y3*1.1, label = ES.text3) + scale_fill_manual( values = "dodgerblue4") + ggtitle("Density Function of Returns (Coffee)")
+#ggplotly(p2, width = 700, height = 400)
+#ggplotly(p3, width = 700, height = 400)
+#ggplotly(p, width = 700, height = 400)
+p
+p2
+p3
+
+#ggarrange(p,p2,p3)
+
+```
+
+Below is the value of the portfolio. Calculated is what the value of the portfolio would look like on day 1, 2, etc. using today's values. >1 means worth more than today, and <1 means less. In general, we are more concerned with losing the gain as opposed to losses in general. Losses will always occur, but losing gain potentially loosens our hold and weakens our recovery from losses. The table shows statistics for the losses of each commodity multiplied by the weight (position multiplied by price). Notice cocoa is highest, while sugar and coffee are the lowest.
+
+```{r }
+# Functions and code structure below are borrowed from previous project 3.
+
+price.last <- as.numeric(tail(prices[,-1], n=1)) #last price, which is the at the top of the "data" dataset.
+# Specify the positions
+position.rf <- c(1/3, 1/3, 1/3) #assumed a ton each -- U.S. dollars a ton per U.S. quantity
+# Compute the position weights
+w <- position.rf * price.last
+sum(w) # value of portfolio
+weights.rf <- matrix(w, nrow=nrow(data.r), ncol=ncol(data.r), byrow=TRUE) # position * price
+# so far we have created a scenario of how prices change
+head(exp(data.r/100)) # do this to convert from percentage to decimal since we need 0.02 for our calculations. Note that we can subtract 1 from this to see raw gains and losses.
+data_moments((exp(data.r/100) -1)* weights.rf) #losses
+```
+
+The 95% loss limits plot shows dollar losses on a U.S. cents per pound per U.S. quantity basis. We will need approximatey $100 to cover the possibilty of the many sampled scenarios we have calculated to reach the expected shortfall 95th percentile to absorb loss at a VaR threshold. There are losses further out to the right.
+
+The threshold exceedances plot below is really the value of our portfolio. The grid simulates the minimum loss to maximum loss, or how much we have exceeded a given threshold, given many thresholds. The exceedance values are on the vertical scale to show the mean exceedances. The black line is the average of the data whenever it exceeds a certain value. At a 95% probability, the black line is between the two red lines. The mean exeedance is increasingly unstable past 25, so we're looking to maintain stability prior to this.
+
+```{r }
+# Functions and code structure below are borrowed from previous project 3.
+
+loss.rf <- -rowSums(expm1(data.r/100) * weights.rf)
+loss.rf.df <- data.frame(Loss = loss.rf, Distribution = rep("Historical", each = length(loss.rf)))
+# simple value at risk and expected shortfall
+alpha.tolerance <- .95
+VaR.hist <- quantile(loss.rf, probs=alpha.tolerance, names=FALSE) # check value at risk again, but this time on a portfolio
+# simple value at risk and expected shortfall
+ES.hist <- median(loss.rf[loss.rf > VaR.hist])
+VaR.text <- paste("Value at Risk =\n", round(VaR.hist, 2))
+ES.text <- paste("Expected Shortfall \n=", round(ES.hist, 2))
+title.text <- paste(round(alpha.tolerance*100, 0), "% Loss Limits")
+# using histogram bars instead of the smooth density
+p <- ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_histogram(alpha = 0.8) + geom_vline(aes(xintercept = VaR.hist), linetype = "dashed", size = 1, color = "blue") + geom_vline(aes(xintercept = ES.hist), size = 1, color = "blue") + ggplot2::annotate("text", x = VaR.hist, y = 40, label = VaR.text) + ggplot2::annotate("text", x = ES.hist, y = 20, label = ES.text) + xlim(0, 150) + ggtitle(title.text)
+p
+
+# mean excess plot to determine thresholds for extreme event management, called a mean exceedance plot, which is built on the next few lines
+data <- as.vector(loss.rf) # data is purely numeric
+umin <-  min(data)         # threshold u min
+umax <-  max(data) - 0.1   # threshold u max; this is to add a little fudge or jitter.
+nint <- 100                # grid length to generate mean excess plot
+grid.0 <- numeric(nint)    # grid store
+e <- grid.0                # store mean exceedances e
+upper <- grid.0            # store upper confidence interval
+lower <- grid.0            # store lower confidence interval
+u <- seq(umin, umax, length = nint) # threshold u grid; sequence of min to max of the number of equally spaced grid marks.
+alpha <- 0.95                  # confidence level
+#for loop: first have an arbitrary threshold from u min to u max (of loss) (no risk here as no threshold is specified yet). Check out u, just a bunch of simulations.
+for (i in 1:nint) {
+    data <- data[data > u[i]]  # subset data above thresholds
+    e[i] <- mean(data - u[i])  # calculate mean excess of threshold
+    sdev <- sqrt(var(data))    # standard deviation
+    n <- length(data)          # sample size of subsetted data above thresholds
+    upper[i] <- e[i] + (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # upper confidence interval; qnorm part is the # of standard deviations at an alpha level of confidence (97.2 percentile cumulative). value is 1.95, which is the number of standard deviations away from zero at the right. If we take the standard deviation of any normal dist and take repeated samplings of the same data, we would find the standard deviation would be the old std divided by the number of samples.
+    lower[i] <- e[i] - (qnorm((1 + alpha)/2) * sdev)/sqrt(n) # lower confidence interval
+  }
+mep.df <- data.frame(threshold = u, threshold.exceedances = e, lower = lower, upper = upper)
+loss.excess <- loss.rf[loss.rf > u]
+p <- ggplot(mep.df, aes( x= threshold, y = threshold.exceedances)) + geom_line() + geom_line(aes(x = threshold, y = lower), colour = "red") + geom_line(aes(x = threshold,  y = upper), colour = "red") + ggplot2::annotate("text", x = 200, y = 200, label = "upper 95%") + ggplot2::annotate("text", x = 200, y = 0, label = "lower 5%")
+p
+```
+
+What do the extremes look like? The tail of the distribution is shown in more detail. In the estimated tail probabilities plot, we have a range of capital depending on our 95% confidence interval. The range of ~93 to ~110 provides the level of confidence. On the lefthand side, the levels are in the tail of the loss distribution.
+
+```{r }
+# Functions and code structure below are borrowed from previous project 3.
+
+# GPD to describe and analyze the extremes
+alpha.tolerance <- 0.95
+u <- quantile(loss.rf, alpha.tolerance , names=FALSE)
+fit <- fit.GPD(loss.rf, threshold=u)  # fit generalized pareto distribution (GPD) to the excesses
+xi.hat <- fit$par.ests[["xi"]] # fitted xi
+beta.hat <- fit$par.ests[["beta"]] # fitted beta
+data <- loss.rf
+n.relative.excess <- length(loss.excess) / length(loss.rf) # = N_u/n this is a simple calculation for Var; the hard one is above.
+VaR.gpd <- u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1) 
+ES.gpd <- (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
+# var and es are much different here compared to the histogram we did earlier
+n.relative.excess <- length(loss.excess) / length(loss.rf) # = N_u/n
+VaR.gpd <- u + (beta.hat/xi.hat)*(((1-alpha.tolerance) / n.relative.excess)^(-xi.hat)-1) 
+ES.gpd <- (VaR.gpd + beta.hat-xi.hat*u) / (1-xi.hat)
+# start plotting
+VaRgpd.text <- paste("Generalized Pareto Distribution: Value at Risk =", round(VaR.gpd, 2))
+ESgpd.text <- paste("Expected Shortfall =", round(ES.gpd, 2))
+title.text <- paste(VaRgpd.text, ESgpd.text, sep = " ")
+loss.plot <- ggplot(loss.rf.df, aes(x = Loss, fill = Distribution)) + geom_density(alpha = 0.2)
+loss.plot <- loss.plot + geom_vline(aes(xintercept = VaR.gpd), colour = "blue", linetype = "dashed", size = 0.8)
+loss.plot <- loss.plot + geom_vline(aes(xintercept = ES.gpd), colour = "blue", size = 0.8) 
+loss.plot <- loss.plot + xlim(0,150) + ggtitle(title.text)
+loss.plot
+# Confidence in GPD
+showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS") 
+```
+
+Given what has been analyzed so far, my suggestion is to adopt sugar, as it has more promising returns and is relatively less volatile. Cocoa is most likely the safest option. However, coffee could also be a viable a choice, despite its volatility. We could take the risk of coffee and see reasonably decent returns. However, in addition this analysis, I am leery of coffee's economic future in general. With global climate change reaching warmer temperatures, predictions concerning the coffee industry indicate that worldwide conditions in coffee bean growth and harvesting will become increasingly difficult, especially for the more lucrative, "premium" coffee beans such as arabica. If LaserMat wishes to invest in a popular soft market commodity, then it will need to do so knowing that the good will be both accessible and needed in 10 years, 20 years, and so on. There is simply too much uncertainty with coffee, and I do not advise investing in the coffee market.
+
+Analyses in the remaining tabs explore the portfolio of sugar in more detail.
+
+Porfolio Analysis
+=======================================================================
+Tangency porfolios as well as a leverage analysis are explored with respect to sugar.
+
+row {.tabset }
+-----------------------------------------------------------------------
+
+### Markowitz Model: Tangency Portfolios
+The Markowitz efficiency portfolio frontier, under CAPM assumptions, serves as a benchmark for expected returns. Models were developed for cocoa, sugar, and coffee in order to optimize the holdings of each of the three commodities.
+
+The blue line represents the market portfolio for cocoa, sugar, or coffee. The red line is the capital market line, which is the line from the risk-free investment throughout the market portfolio, representing the highest-expected return available for any level of volatility. Sugar and coffee fall along the capital market line, which is what we want. Cocoa does not. The expected return for sugar is ~19% at ~7% volatility.
+
+```{r}
+# Functions and code structure below are borrowed from previous project 4.
+
+R <- returns[,1:3]/100
+quantile_R <- quantile(R[,1], 0.95) # look at tail of the sugar distribution
+R <- subset(R, Cocoa > quantile_R, select = Cocoa:Sugar:Arabica.Coffee)
+names.R <- colnames(R)
+mean.R <-  apply(R,2,mean)
+cov.R <-  cov(R)
+sd.R <-  sqrt(diag(cov.R)) # daily percentages
+Amat <-  cbind(rep(1,3),mean.R)  # set the equality constraints matrix
+mu.P <- seq(0.5*min(mean.R), 1.5*max(mean.R), length = 100)  ## set of 100 possible target portfolio returns
+sigma.P <-  mu.P # set up storage for standard deviations of portfolio returns
+weights <-  matrix(0, nrow=300, ncol = ncol(R)) # store portfolio weights
+colnames(weights) <- names.R
+for (i in 1:length(mu.P))
+{
+  bvec <- c(1,mu.P[i])  # constraint vector
+  result <- solve.QP(Dmat=2*cov.R,dvec=rep(0,3),Amat=Amat,bvec=bvec,meq=2)
+  sigma.P[i] <- sqrt(result$value)
+  weights[i,] <- result$solution
+}
+sigma.mu.df <- data.frame(sigma.P = sigma.P, mu.P = mu.P )
+mu.free <-  .0000822 # input value of daily risk-free interest rate
+sharpe <- ( mu.P-mu.free) / sigma.P # compute Sharpe's ratios for risk-adjusted returns
+ind <-  (sharpe == max(sharpe)) # find maximum Sharpe's ratio
+ind2 <-  (sigma.P == min(sigma.P)) # find the minimum variance portfolio
+ind3 <-  (mu.P > mu.P[ind2]) # efficient frontier
+col.P <- ifelse(mu.P > mu.P[ind2], "blue", "grey")
+sigma.mu.df$col.P <- col.P
+# Efficient Frontier
+p1 <- ggplot(sigma.mu.df, aes(x = sigma.P, y = mu.P, group = 1)) + geom_line(aes(colour=col.P, group = col.P)) + scale_colour_identity()
+p1 <- p1 + geom_point(aes(x = 0, y = mu.free), colour = "red")
+options(digits=4)
+p1 <- p1 + geom_abline(intercept = mu.free, slope = (mu.P[ind]-mu.free)/sigma.P[ind], colour = "red")
+p1 <- p1 + geom_point(aes(x = sigma.P[ind], y = mu.P[ind])) 
+p1 <- p1 + geom_point(aes(x = sigma.P[ind2], y = mu.P[ind2])) # show minimum variance portfolio
+p1 <- p1 + annotate("text", x = sd.R[1], y = mean.R[1], label = names.R[1]) + annotate("text", x = sd.R[2], y = mean.R[2], label = names.R[2]) + annotate("text", x = sd.R[3], y = mean.R[3], label = names.R[3]) + ggtitle("Cocoa Market Efficient Portfolio") + theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Standard Deviation Volatility", y = "Expected Return")
+
+R <- returns[,1:3]/100
+quantile_R <- quantile(R[,2], 0.95) # look at tail of the sugar distribution
+R <- subset(R, Sugar > quantile_R, select = Cocoa:Sugar:Arabica.Coffee)
+names.R <- colnames(R)
+mean.R <-  apply(R,2,mean)
+cov.R <-  cov(R)
+sd.R <-  sqrt(diag(cov.R)) # daily percentages
+Amat <-  cbind(rep(1,3),mean.R)  # set the equality constraints matrix
+mu.P <- seq(0.5*min(mean.R), 1.5*max(mean.R), length = 100)  ## set of 100 possible target portfolio returns
+sigma.P <-  mu.P # set up storage for standard deviations of portfolio returns
+weights <-  matrix(0, nrow=300, ncol = ncol(R)) # store portfolio weights
+colnames(weights) <- names.R
+for (i in 1:length(mu.P))
+{
+  bvec <- c(1,mu.P[i])  # constraint vector
+  result <- solve.QP(Dmat=2*cov.R,dvec=rep(0,3),Amat=Amat,bvec=bvec,meq=2)
+  sigma.P[i] <- sqrt(result$value)
+  weights[i,] <- result$solution
+}
+sigma.mu.df <- data.frame(sigma.P = sigma.P, mu.P = mu.P )
+mu.free <-  .0000822 # input value of daily risk-free interest rate
+sharpe <- ( mu.P-mu.free) / sigma.P # compute Sharpe's ratios for risk-adjusted returns
+ind <-  (sharpe == max(sharpe)) # find maximum Sharpe's ratio
+ind2 <-  (sigma.P == min(sigma.P)) # find the minimum variance portfolio
+ind3 <-  (mu.P > mu.P[ind2]) # efficient frontier
+col.P <- ifelse(mu.P > mu.P[ind2], "blue", "grey")
+sigma.mu.df$col.P <- col.P
+# Efficient Frontier
+p2 <- ggplot(sigma.mu.df, aes(x = sigma.P, y = mu.P, group = 1)) + geom_line(aes(colour=col.P, group = col.P)) + scale_colour_identity()
+p2 <- p2 + geom_point(aes(x = 0, y = mu.free), colour = "red")
+options(digits=4)
+p2 <- p2 + geom_abline(intercept = mu.free, slope = (mu.P[ind]-mu.free)/sigma.P[ind], colour = "red")
+p2 <- p2 + geom_point(aes(x = sigma.P[ind], y = mu.P[ind])) 
+p2 <- p2 + geom_point(aes(x = sigma.P[ind2], y = mu.P[ind2])) # show minimum variance portfolio
+p2 <- p2 + annotate("text", x = sd.R[1], y = mean.R[1], label = names.R[1]) + annotate("text", x = sd.R[2], y = mean.R[2], label = names.R[2]) + annotate("text", x = sd.R[3], y = mean.R[3], label = names.R[3]) + ggtitle("Sugar Market Efficient Portfolio") + theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Standard Deviation Volatility", y = "Expected Return")
+
+R <- returns[,1:3]/100
+quantile_R <- quantile(R[,3], 0.95) # look at tail of the sugar distribution
+R <- subset(R, Arabica.Coffee > quantile_R, select = Cocoa:Sugar:Arabica.Coffee)
+names.R <- colnames(R)
+mean.R <-  apply(R,2,mean)
+cov.R <-  cov(R)
+sd.R <-  sqrt(diag(cov.R)) # daily percentages
+Amat <-  cbind(rep(1,3),mean.R)  # set the equality constraints matrix
+mu.P <- seq(0.5*min(mean.R), 1.5*max(mean.R), length = 100)  ## set of 100 possible target portfolio returns
+sigma.P <-  mu.P # set up storage for standard deviations of portfolio returns
+weights <-  matrix(0, nrow=300, ncol = ncol(R)) # store portfolio weights
+colnames(weights) <- names.R
+for (i in 1:length(mu.P))
+{
+  bvec <- c(1,mu.P[i])  # constraint vector
+  result <- solve.QP(Dmat=2*cov.R,dvec=rep(0,3),Amat=Amat,bvec=bvec,meq=2)
+  sigma.P[i] <- sqrt(result$value)
+  weights[i,] <- result$solution
+}
+sigma.mu.df <- data.frame(sigma.P = sigma.P, mu.P = mu.P )
+mu.free <-  .0000822 # input value of daily risk-free interest rate
+sharpe <- ( mu.P-mu.free) / sigma.P # compute Sharpe's ratios for risk-adjusted returns
+ind <-  (sharpe == max(sharpe)) # find maximum Sharpe's ratio
+ind2 <-  (sigma.P == min(sigma.P)) # find the minimum variance portfolio
+ind3 <-  (mu.P > mu.P[ind2]) # efficient frontier
+col.P <- ifelse(mu.P > mu.P[ind2], "blue", "grey")
+sigma.mu.df$col.P <- col.P
+# Efficient Frontier
+p3 <- ggplot(sigma.mu.df, aes(x = sigma.P, y = mu.P, group = 1)) + geom_line(aes(colour=col.P, group = col.P)) + scale_colour_identity()
+p3 <- p3 + geom_point(aes(x = 0, y = mu.free), colour = "red")
+options(digits=4)
+p3 <- p3 + geom_abline(intercept = mu.free, slope = (mu.P[ind]-mu.free)/sigma.P[ind], colour = "red")
+p3 <- p3 + geom_point(aes(x = sigma.P[ind], y = mu.P[ind])) 
+p3 <- p3 + geom_point(aes(x = sigma.P[ind2], y = mu.P[ind2])) # show minimum variance portfolio
+p3 <- p3 + annotate("text", x = sd.R[1], y = mean.R[1], label = names.R[1]) + annotate("text", x = sd.R[2], y = mean.R[2], label = names.R[2]) + annotate("text", x = sd.R[3], y = mean.R[3], label = names.R[3]) + ggtitle("Arabica Coffee Market Efficient Portfolio") + theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Standard Deviation Volatility", y = "Expected Return")
+
+#ggplotly(p1, width=800, height=600)
+#ggplotly(p2, width=800, height=600)
+#ggplotly(p3, width=800, height=600)
+p1
+p2
+p3
+```
+
+row {.tabset }
+-----------------------------------------------------------------------
+
+### Market Leverage Analysis: Sugar Volatility
+
+```{r}
+# Functions and code structure below are borrowed from previous project 4.
+
+img <- image_graph(width = 800, height = 600, res = 96)
+r_corr_vol_short <- r_corr_vol[-c(1:89),]
+datalist <- split(r_corr_vol_short, r_corr_vol_short$year)
+out <- lapply(datalist, function(data){
+  p <- ggplot(data, aes(sugar.vol, Sugar)) +
+    geom_point() + 
+    ggtitle(data$year) + 
+    geom_quantile(quantiles = c(0.05, 0.95)) + 
+    geom_quantile(quantiles = 0.5, linetype = "longdash") +
+    geom_density_2d(colour = "red")  
+  print(p)
+})
+image_animate(img, fps = .5)
+```
+
+Shown are regressions of sugar returns versus the volatility of sugar, beginning with 1987. There are not very many flatlines here; most are either increasing or decreasing, suggesting the price of sugar may be a driver of the volatility of sugar.
+
+References
+=======================================================================
+
+**Data and Structure**
+
+- FRED for data, which were individual datasets I compiled into one document: https://fred.stlouisfed.org/series/PCOCOUSDM, https://fred.stlouisfed.org/series/PSUGAISAUSDM, https://fred.stlouisfed.org/series/PCOFFOTMUSDM
+- Professor Bill Foote for the bulk structure of the code.
+- StackExchange for helping to troubleshoot issues pertaining to functions I created or sections of code from previous projects that required tweaking.
+
+**References**
+
+Berk, J. B., & DeMarzo, P. M. (2017). Corporate Finance: The Core (4th ed.). Harlow: Pearson.
+
+Worland, Justin. (2018, June 21). Your Morning Cup of Coffee Is in Danger. Can the Industry Adapt in Time? Time Magazine. Retrieved from http://time.com/5318245/coffee-industry-climate-change/
