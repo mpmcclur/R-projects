@@ -1,0 +1,142 @@
+---
+title: "HW_8_McClure_Matt"
+author: "Matt McClure"
+date: "September 9, 2018"
+output: word_document
+---
+
+Using the deception data set, which is a collection of customer reviews, where some are true and some are fake. Text mining techniques will be performed in order to break down, or tokenize, the reviews into words, and then perform a sentiment analysis. Then, naive  Bayes (NB) and support vector machine (SVM) models will be constructed to predict both the sentiment and whether the review was fake or real (i.e., if the review is a "lie").
+
+The first challenge is reading in the data. As-is, R cannot import the CSV file due to there being more columns than column names. Certain reviews include commas, which are then recognized as separate columns.
+
+```{r Read in Data}
+#install.packages("rgr")
+library(tidytext)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(wordcloud)
+library(ggplot2)
+library(splitstackshape)
+library(data.table)
+library(SnowballC)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(e1071)
+library(caret)
+library(C50)
+library(prediction)
+require(caTools)
+require(spls)
+library(ipred)
+library(ElemStatLearn)
+library(klaR)
+library(rgr)
+
+#The data cannot simply be read in using read.csv, since the function separates the "review" column into other columns whenever a comma is present. Thus, I have devised another method for reading in the data.
+lie_data <- read.csv2("./deception_data_converted_final.csv")
+#Create column names
+nameLine <- readLines("./deception_data_converted_final.csv", n=1)
+fileColNames <- unlist(strsplit(nameLine,";"))
+names(lie_data) <- fileColNames
+strsplit(names(lie_data), ",")
+#Split columns
+lie_data <- cSplit(as.data.table(lie_data), c("lie,sentiment,review"), ",")
+#Rename columns
+colnames(lie_data) <- c("lie","sentiment","review","x1","x2","x3","x4","x5","x6","x7","x8","x9","x10","x11","x12","x13","x14","x15","x16","x17","x18","x19","x20","X21")
+#Concatenate review columns
+lie_data$review <- paste(lie_data$review,lie_data$x1,lie_data$x2,lie_data$x3,lie_data$x4,lie_data$x5,lie_data$x6,lie_data$x7,lie_data$x8,lie_data$x9,lie_data$x10,lie_data$x11,lie_data$x12,lie_data$x13,lie_data$x14,lie_data$x15,lie_data$x16,lie_data$x17,lie_data$x18,lie_data$x19,lie_data$x20,lie_data$X21, sep="")
+#Remove empty columns
+lie_data <- lie_data[,-c(4:24)]
+#Remove unhelpful rows with "?NANANANA" in cell
+lie_data <- lie_data[-c(83:84),]
+lie_data <- data.frame(lie_data)
+#Success
+```
+Now that the data are read in and reconstructed appropriately, tokenization of the reviews can be attempted in addition to other text mining processes.
+```{r Tokenization and Other Text Mining Processing}
+#Tokenization
+lie_data_tok <- lie_data %>% 
+  unnest_tokens(word, review, to_lower = TRUE) #tokenizes text into a bag of words; also indicates case difference to be same term
+head(lie_data, 10) #returns first 10 rows, with a collection of words for each review ID
+#Remove rows with "nanananana" values
+lie_data_tok <- lie_data_tok[!grepl('nanananana',lie_data_tok$word),]
+
+#I will choose not to stem the words, since many of the words were cutoff or butchered in the analysis below.
+
+#Stop words removal: vocabulary
+set.seed(120)
+cat(lie_data_tok$word[sample(x = 1:nrow(stop_words), size = 30)], sep = ", ") #randomly sample 30 stop words from dictionary
+#Source of stop words
+unique(stop_words$lexicon)
+#How to remove stop words
+nrow(lie_data_tok) #first check the number of words that are considered as stop words
+lie_data_tok <- lie_data_tok %>%
+  filter(!word %in% stop_words$word, str_detect(word, "^[a-z']+$")) #filter out the stop words
+nrow(lie_data_tok) #less than 1/2 of the words are kept after removing the stop words
+
+#Frequency and wordcloud
+lie_data_tok %>% 
+  count(word) %>% #provides a way to calculate frequency of words
+  with(wordcloud(word, n, max.words = 200)) #size of words in cloud correspond to frequency of word
+
+unique(sentiments$lexicon)
+str(sentiments) #dataframe contains the lexicon names and sentiment (categories); unfortunately, no words in our lexicon matched those in the sentiments' lexicon.
+#Determine sentiment score using the NRC emotion lexicon:
+lie_data_tok %>%
+        right_join(get_sentiments("nrc")) %>%
+        filter(!is.na(sentiment)) %>%
+        count(sentiment, sort = TRUE)
+```
+The numeric sentiment score shows many negative and positive reviews as well as anger, trust, fear, and sadness. This gives us a good sense of the reviews, even though fear is particularly unusual in the context of restaurant reviews. Additional procedures, such as observing how the sentiment changes with each review, could also be carried forth, but I will stop here to perform the ML procedures. In addition, the wordcloud was generated successfully, with restaurant and food being the most frequent. Other words are less frequent and are a mix of positive and negative sentiments.
+
+Now we can attempt to create ML algorithms using NB and SVM algorithms. I will start with predicting fake reviews ("lie") and then will continue with predicting sentiment. The accuracy for each model will then be determined.
+```{r Lie ML Models}
+#Naive Bayes Model
+sample = sample.split(lie_data_tok$word, SplitRatio = .50) #use 50% split ratio
+text_train = subset(lie_data_tok, sample == TRUE)
+text_train$lie <- as.factor(text_train$lie)
+#Create test data from train dataset
+text_test <- text_train[sample(1:nrow(text_train), 1000,replace=FALSE),]
+set.seed(120)
+text_model_nb <- naiveBayes(text_train$lie ~.,data=text_train)
+predict_nb <- suppressWarnings(predict(text_model_nb, newdata = text_test, type = "class",trcontrol = trainControl(method = "cv", number = 10)))
+confusionMatrix(text_test$lie,predict_nb) #lie was predicted with 87% accuracy
+
+#Support Vector Machine (SVM) Model
+set.seed(120)
+svm_model_linear <- suppressWarnings(train(lie ~ ., data = text_train,
+    method = "svmLinear",
+    preProcess = c("center", "scale"), #center and scale data
+    trControl = trainControl(method = "boot", number = 25),
+    tuneGrid = expand.grid(C = seq(0, 1, 0.05)))) #sequence from 0-1 by 0.05 intervals
+svm_model_linear
+plot(svm_model_linear)
+predict_svm_linear <- predict(svm_model_linear, newdata = text_test)
+plot(predict_svm_linear) #constructs histogram showing most frequently occuring predicted labels
+confusionMatrix(predict_svm_linear, text_test$lie) #linear SVM shows 86% accuracy, which is slightly lower than the NB model
+```
+The accuracy for each model predicting "lie" is satisfactory: the NB model predicts an accuracy of 87%, whil the SVM model predicts with 86% accuracy.
+```{r Sentiment ML Models}
+#Naive Bayes Model
+text_train$sentiment <- as.factor(text_train$sentiment)
+set.seed(120)
+text_model_nb <- naiveBayes(text_train$sentiment ~.,data=text_train)
+predict_nb <- suppressWarnings(predict(text_model_nb, newdata = text_test, type = "class",trcontrol = trainControl(method = "cv", number = 10)))
+confusionMatrix(text_test$sentiment,predict_nb) #sentiment was predicted with 88% accuracy
+
+#Support Vector Machine (SVM) Model
+set.seed(120)
+svm_model_linear <- suppressWarnings(train(sentiment ~ ., data = text_train,
+    method = "svmLinear",
+    preProcess = c("center", "scale"), #center and scale data
+    trControl = trainControl(method = "boot", number = 25),
+    tuneGrid = expand.grid(C = seq(0, 1, 0.05)))) #sequence from 0-1 by 0.05 intervals
+svm_model_linear
+plot(svm_model_linear)
+predict_svm_linear <- predict(svm_model_linear, newdata = text_test)
+plot(predict_svm_linear) #constructs histogram showing most frequently occuring predicted labels
+confusionMatrix(predict_svm_linear, text_test$sentiment) #linear SVM shows 88% accuracy, which is the same as the above NB model
+```
+Both algorithms were able to predict the variables interest, "lie" and "sentiment" with accuracies >86%, which is satisfactory. As such, I did not implement or attempt adjustment of additional tuning parameters. The high accuracy is a reflection of potentially well-constructed ML algorithms as well as satisfactory tokenization of the words. Indeed, the tokenization, sentiment, sentiment score, and wordcloud all were generated successfully, so I am considering this exploration in text mining and predictive analysis successful.

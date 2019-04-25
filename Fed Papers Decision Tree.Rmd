@@ -1,0 +1,99 @@
+---
+title: "Fed Papers Decision Tree"
+author: "Matt McClure"
+date: "August 11, 2018"
+output: word_document
+---
+Install the appropriate packages and load in the data.
+```{r setup}
+#install.packages("C50")
+#install.packages("caret")
+#install.packages("rpart")
+#install.packages("e1071")
+#install.packages("rattle")
+#installed.packages("rpart.plot")
+#install.packages("rpart")
+#install.packages("prediction")
+#install.packages("spls")
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(e1071)
+library(caret)
+library(C50)
+library(dplyr)
+library(prediction)
+require(caTools)
+require(spls)
+fed_paper <- read.csv("./fedPapers85.csv")
+#Remove second column.
+fed_paper <- fed_paper[, !(names(fed_paper)%in% c("filename","your"))]
+View(fed_paper)
+```
+Start first by splitting the dataset between dispt. authors and all other (known) authors. The goal is to create a train dataset with the known authors and a test dataset with the dispt. authors to see where the dispt. author lies along the tree. This will help us to indicate which author the model believes is the author of the disputed papers.
+
+The model will be created using recursive partioning, or the rpart function.
+```{r Data Preparation}
+fed_train <- fed_paper[-c(1:11), ]
+fed_test <- fed_paper[-c(12:85), ]
+View(fed_train)
+View(fed_test)
+#Create a model.
+dim(fed_paper)
+set.seed(120)
+fed_model <- rpart(author ~.,fed_train) #Function specifies parameters authomatically; other parameters are not needed to be specified for this basic model.
+typeof(fed_model) #what type is the model in R
+names(fed_model) #names of the lists in the model
+#Check decision tree classifiers
+print(fed_model)
+#Check decision tree classifier details
+print(fed_model$finalModel)
+
+#Can examine the complexity of the tree.
+printcp(fed_model)
+plotcp(fed_model)
+#In the plot, cross-validation error is plotted against complexity parameters (CP), which is sets parameters for the tree's growth. Where the line is closest to the dotted line, that will be the CP value (0.047), which will be used in the post-pruning step.
+```
+Now that we have a model, we can perform model predictions.
+```{r Model Predictions}
+set.seed(120)
+predict(fed_model, fed_test,type = "prob") #type "prob" returns probabilities of classes in columns.
+#The probabilities are shown for all the authors. Here, we see that, aside from disputed paper #3, all papers are most likely (most probably) authored by Madison. There is a small probability that both Hamiltona dn Madison authored the papers, and not probability, except for paper #3, that Hamilton is the author (!). Disputed paper #3 is most likely authored by Jay, but we will see if this holds up in the pre-pruning and post-pruning.
+```
+Instead of model tuning, we will go straighgt to model pre-pruning in order to increase the accuracy of the model. Pre-pruning can be performed by adding more parameters to the rpart function. This is to prevent the model overfitting the tree and increasing its complexity. The minsplit, minbucket, and maxdepth parameters are very influential here.
+
+Minsplit specifies the minimum number of observations that must exist in one node before the tree splits. Minbucket is the minimum number of observations in a leaf. Maxdepth sets the maximum depth of the tree.
+```{r Model Pre-Pruning}
+#Model pre-pruning
+set.seed(100)
+fed_model_preprune <- rpart(author ~ ., data = fed_train,control = rpart.control(minsplit = 1, type = "prob", minbucket = 0, maxdepth = 30))
+#print(preprune_model$finalModel)
+predict(fed_model_preprune, fed_test, type="prob")
+#Interestingly, and it should be taken with a grain ofsalt, the pre-pruned model yields, with 100% probability, that Madison is the author of all the papers.
+```
+Even though the pre-pruning model shows that Madison wrote the disputed papers with 100% certainty, it's a good idea to post-prune the model so we can use the complexity parameter found above.
+
+Model post-pruning enables us to choose which part of the decision tree model to be complete. It's used after the full sized decision tree by using specific CP value, which we found above to 0.047.
+```{r Model Post-Pruning}
+set.seed(120)
+fed_model_postprune <- prune(fed_model, cp = 0.047, type = "prob")
+print(fed_model_postprune)
+predict(fed_model_postprune, fed_test, type="prob")
+#The probability of the author being Madison for the majority of the papers did not change from the base model, unfortunately.
+```
+Either the base/post-pruned model or the pre-pruned model can be plotted. The base and post-pruned models identical, and the pre-pruned tree shows, with greater tree depth and with 100% probability, that Madison is the author of all 11 disputed papers. 
+```{r Plot the Tree}
+fancyRpartPlot(fed_model_preprune)
+prp(fed_model_preprune)
+```
+The root of the tree is the "upon" function word. Each node shows the predicted author, the predicted probability of each author, and the percentage of observations made in each node. 
+
+If the value of "upon" is greater than or equal to 0.019, then the author is Hamilton; if not, then the tree branches further down to other function words that determines the author of the paper. Essentially, the tree we have constructed views the function words as the writing style of the authors. The pre-pruned model, which is plotted above, when evaluated using the predict function, showed Madison wrote all the disputed papers. The decision tree plots show the breakdown of this prediction using the function words. Notice that many function words, depending on their value, leads to various authors, including Jay and Hamilton & Madison, but the model determines the disputed papers follow the function words all the way down to Madison each time.
+
+This result does not correlate with my findings using K-means or HAC clustering in the previous assignment, where the conclusion was both Hamilton and Madison authored the disputed papers.
+
+Prior to using the rpart function, I created the model using the train function. However, I abandoned this function in favor of rpart because train was not providing meaningful or easily verifiable prediction accuracy.
+
+The most important caveat to this process is that I was unable to test the accuracy of the model. Traditionally, we would test the outcome of the model based on training data against the testing data, which will have the same response variables (i.e., same pool of authors the model determines). Here, we have two different outcome parameters, dispt. vs. Hamilton + Madison + Jay + HM. However, I did test the accuracy by initially splitting the test and training data in half, and I achieved relatively high accuracy (>85%). I primarily used these two algorithms:
+mean(fed_test$pred$dispt == fed_test$author) and sum(fed_test$author==predict)/length(predict)
+Those results are not shown here.

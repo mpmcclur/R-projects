@@ -1,0 +1,308 @@
+---
+title: "NYC Film Permits"
+author: "Matt McClure with Beth Young"
+date: "September 13, 2018"
+output: html_document
+---
+A number of data mining techniques, such as implementing the naive Bayes classifer and text mining tokenization and wordcloud, are used on Kaggle's New York City Film Permits dataset. The dataset contains a list of permit events in all five boroughs that are provided for the purpose of film, commercials, television shows, theater, promotional material, etc. Variables include the event's agency as well as the borough, zip code, and entertainment category to which the permit pertains. City permits are required because the events require the use of city property, such as a street, sidewalk, or park.
+
+This report explores the following challenges:
+
+1. What is the most popular entertainment category for each borough, and what do they look like on a map (i.e., where do these categories fall on a map)?
+2. Is any one police precinct impacted more any than other? Can we predict precinct based on attributes Zipcode and Borough?
+3. Can we predict where the event will take place based on certain permit variables?
+4. Based on permit variables such as Zipcode and Borough, can we predict what the entertainment category is?
+5. Which streets are most affected by permits? Make a word cloud of common streets.
+
+```{r setup}
+
+#install.packages("pacman")
+pacman::p_load(dplyr, psych, tm,caret,mlbench,rpart,rpart.plot,rattle,e1071,C50,dplyr,prediction,caTools,spls,ipred,ElemStatLearn,klaR,randomForest,psych,plotly,stringr,methods,httr,rgdal,tidyr,permutations,leaflet,zipcode,ggmap,maps,mapdata,caret,RgoogleMaps,tidytext,wordcloud,RColorBrewer)
+
+# changed this to be relative path instead of absolute path.  as long as it is in this code is in the same folder as the data file, a relative path should work. 
+permit_data <- read.csv("./film-permits.csv",stringsAsFactors = TRUE, header=TRUE)
+permit_data <- permit_data[, !(names(permit_data)%in% c("CommunityBoard.s."))] # Remove variable
+permit_data <- permit_data[, !(names(permit_data)%in% c("Country"))] # Remove variable
+permit_data <- permit_data[,-c(3:5)] # Remove timestamp variables
+#permit_data <- permit_data[-37265,] # Remove "Red Carpet" Category since it has caused issues in one of the models below.
+str(permit_data)
+
+# load zip code data
+data(zipcode)
+zip <- zipcode
+
+# create separate vector of permit_data for the zip code analysis
+permit_zip <- permit_data
+
+# data clean up; need only one zipcode in the zip code column
+#permit_zip$ZipCode.s. <- as.character(permit_zip$ZipCode.s.)
+permit_zip <- permit_zip %>% separate(ZipCode.s., c("zip","zip1"), sep = ",")
+permit_zip <- within(permit_zip, zip[zip == '0'] <- permit_zip$zip1)
+#permit_zip <- within(permit_zip, zip[zip == '83'] <- permit_zip$zip1)
+
+# convert both dataset columns to be numeric; want the column names between data sets to be the same
+permit_zip$zip <- as.numeric(permit_zip$zip)
+zip$zip <- as.numeric(zip$zip)
+
+permit_data2 <- left_join(permit_zip, zip, by = 'zip')
+```
+
+1. What is the most popular entertainment category for each borough, and what do they look like on a map (i.e., where do these categories fall on a map)?
+
+```{r plot map data}
+# What is the most popular category?
+category_sum <- permit_data %>%
+    group_by(Category) %>%
+    tally()
+cat_plot <- ggplot(category_sum, aes(x=Category,y=n)) + geom_bar(stat="identity") + 
+  labs(x="Category", y="Frequency") +
+  scale_x_discrete(labels = function(Category) str_wrap(Category, width = 10)) + coord_cartesian(ylim=c(0, 30000)) + scale_y_continuous(breaks=seq(0,30000,5000))
+cat_plot # Television is most popular
+
+category_sum <- permit_data2 %>%
+    group_by(Category,zip) %>%
+    tally()
+
+category_sum <- left_join(category_sum, zip, by = 'zip')
+
+#nyc_map <- get_map(location = c(lon = -74.00, lat = 40.71), maptype = "terrain", zoom = 10)
+# Shift the center of the map a little.
+nyc_map <- get_map(location = c(lon = -73.88, lat = 40.75), maptype = "terrain", zoom = 10)
+#ggmap(nyc_map)
+
+cat_list <- unique(permit_data$Category)
+library(RColorBrewer)
+myColors <- brewer.pal(10,"PiYG")
+names(myColors) <- levels(category_sum$Category)
+colScale <- scale_colour_manual(name = "Category",values = myColors)
+
+g <- ggmap(nyc_map)
+g <- g + ggtitle("Filming Locations") + theme(plot.title = element_text(hjust = 0.5))
+g <- g + coord_fixed(1.3) 
+g <- g + geom_point(data=category_sum, aes(x=longitude, y=latitude, size=n,colour=category_sum$Category))  
+g <- g + colScale
+g
+
+#Television is such a huge category that it overpowers all other dots on the map.  if you look closely, you can see some other colors.  
+
+```
+
+2. Is any one police precinct impacted more any than other? Can we predict precinct based on variables such as zipcode and borough?
+
+Plotted below is a graph showing the most frequent police precincts for each event, from which we can see that the most precinct most frequently affected is precinct 94. In addition, we trimmed the data to isolate a few key variables, such as parking location (streets affected), borough, precinct, ad category, and zip code. The model utilizes the naive Bayes algorithm. The model is able to predict the police precinct based on these variables to an accuracy of 86%. Not much tuning was performed outside of the naiveBayes function.
+
+```{r Precinct Prediction}
+permit_short <- permit_data[,c(4:9)] # remove first 6 variables
+permit_short <- permit_short[, !(names(permit_short)%in% c("SubCategoryName"))]
+# Split police precinct into separate columns with one value.
+permit_short <- permit_short %>% separate(PolicePrecinct.s., c("precinct","precinct2"), sep = ",")
+permit_short <- permit_short[, !(names(permit_short)%in% c("precinct2"))]
+# Split zip codes into separate columns with one value.
+permit_short <- permit_short %>% separate(ZipCode.s., c("zip","zip1"), sep = ",")
+permit_short <- permit_short[, !(names(permit_short)%in% c("zip1"))]
+precinct_sum <- permit_short %>%
+    group_by(precinct) %>%
+    tally()
+precinct_plot <- ggplot(precinct_sum, aes(x=precinct,y=n)) + geom_bar(stat="identity") + 
+  labs(x="Precinct", y="Frequency") +
+  scale_x_discrete(labels = function(precinct) str_wrap(precinct, width = 10))
+ggplotly(precinct_plot, width=1700) # Police precinct 94 is the most popular.
+
+# Create ML models to predict police precinct based on fewer, select variables 
+set.seed(120)
+sample = sample.split(permit_short, SplitRatio = .50) #use 50% split ratio
+permit_train = subset(permit_short, sample == TRUE)
+permit_train$precinct <- as.factor(permit_train$precinct)
+permit_test <- permit_train[sample(1:nrow(permit_train), 20562,replace=FALSE),]
+
+#Naive Bayes
+precinct_model_nb <- naiveBayes(permit_train$precinct ~.,data=permit_train)
+precinct_predict_nb <- suppressWarnings(predict(precinct_model_nb, newdata = permit_test, type = "class"))
+confusionMatrix(permit_test$precinct,precinct_predict_nb) #precinct was predicted with 85% accuracy
+```
+
+3. Can we predict predict where the event will take place based on certain permit variables?
+
+```{r }
+
+# Timer
+start_time <- Sys.time()
+# Notes: minsplit - the minimum number of observations that must exist in a node in order for a split to be attempted.
+# minbucket - the minimum number of observations in any terminal
+
+#model_cv <- train(Borough ~., data = permit_train, 
+#                  method="rpart",
+#                  metric = "Accuracy",
+#                  control = rpart.control(minsplit = 50, minbucket = 50, maxdepth = 6, cp=.5),
+#                  tuneLength=8,
+#                  na.rm = TRUE)
+# The above code would never work because of memory problems.  I tried everything I could think of to tune the parameters and I could never get it to work.  
+#Error: cannot allocate vector of size 3.6 Gb (or 8.3 if I used 70/30 split)
+
+
+model_nb <- naiveBayes(permit_train$Borough ~., data=permit_train)
+end_time <- Sys.time()
+process_time <- end_time - start_time
+process_time
+
+
+predict_nb <- predict(model_nb, newdata = permit_test, type="class")
+confusionMatrix(permit_test$Borough,predict_nb)
+
+
+```
+
+4. Based on permit variables such as Zipcode and Borough, can we predict what the entertainment category is?
+
+Employing a similar naive Bayes model to the one used in question 2 yielded mediocre results. To improve the results, we attempted to resample and downsize the data, which proved not to be effective. The model could predict the precinct with only 50% accuracy. In light of this, we formulated numerous other models using different machine learning algorithms (see code at bottom of report) in an attempt to improve the accuracy of the NB model, but we ran into problems such as unwieldy errors and long computation times that never completed. The latter issue was most likely due to the size of the data. Thus, we decided to tokenize the ParkingHeld attribute to see if predictions could be improved using the NB algorithm, which it did. Through tokenization, the algorithm achieved an accuracy of 91%.
+
+```{r }
+# Pare down data even more.
+set.seed(120)
+sample2 = sample.split(permit_short, SplitRatio = .10) #use 10% split ratio
+permit_train2 = subset(permit_short, sample2 == TRUE)
+permit_train2 <- permit_train2[!grepl('Red Carpet/Premiere',permit_train2$Category),]
+permit_train$Category <- as.factor(permit_train$Category)
+permit_test2 <- permit_train2[sample(1:nrow(permit_train2), 5000,replace=FALSE),]
+permit_test2 <- permit_test2[!grepl('Red Carpet/Premiere',permit_test2$Category),]
+
+# Naive Bayes
+set.seed(120)
+cat_model_nb <- naiveBayes(Category ~.,data=permit_train2)
+cat_predict_nb <- predict(cat_model_nb, newdata = permit_test2, type = "class")
+confusionMatrix(permit_test2$Category,cat_predict_nb) # yields 44% accuracy, which is inadequate. Trying another test.
+
+# we could never get this code to finish.  It never generated any errors but it would never complete process either.  
+#Research into SVM models lead us to articles like this one:
+#https://stats.stackexchange.com/questions/314329/can-support-vector-machine-be-used-in-large-data
+# which incidates that using SVM on very large data sets wasn't recommended because of the raw computing power needed.
+
+
+# SVM Model
+# Getting errors; doesn't work
+#set.seed(120)
+#sample2 = sample.split(permit_short, SplitRatio = .10) #use 10% split ratio
+#permit_train2 = subset(permit_short, sample2 == TRUE)
+#permit_train2 <- permit_train2[!grepl('Red Carpet/Premiere',permit_train2$Category),]
+#permit_train2 <- permit_train[,-1]
+#permit_train$Category <- as.factor(permit_train$Category)
+#permit_test2 <- permit_train2[sample(1:nrow(permit_train2), 5000,replace=FALSE),]
+#permit_test2 <- permit_test2[!grepl('Red Carpet/Premiere',permit_test2$Category),]
+#set.seed(120)
+#colnames(permit_test2)
+#svm_model_linear <- train(permit_train$Category ~ ., data = permit_train2,
+#    method = "svmLinear",
+#    preProcess = c("center", "scale"), #center and scale data; probably not necessary but included anyway
+#    trControl = trainControl(method = "boot", number = 25),
+#    tuneGrid = expand.grid(C = seq(0, 1, 0.05))) #sequence from 0-1 by 0.05 intervals
+#svm_model_linear
+#plot(svm_model_linear)
+#predict_svm_linear <- predict(svm_model_linear, newdata = permit_test)
+#plot(predict_svm_linear) #constructs histogram showing most frequently occuring predicted labels
+#confusionMatrix(predict_svm_linear, permit_test$Category)
+
+
+
+```
+
+```{r tokenization}
+# Since we having problems getting decision trees and random forest models to run because of the size constaints, it was decided to tokenize the ParkingHeld attribute and see if we could improve our prediction.
+
+#parking held needs to be characters,  not a factor
+permit_data$ParkingHeld <- as.character(permit_data$ParkingHeld)
+
+permit_parking <- permit_data %>%
+  select(EventID, EventType, ParkingHeld, Borough) %>%
+  unnest_tokens(word, ParkingHeld, to_lower=TRUE)
+head(permit_parking, 10)
+
+#I removed stemming because I didn't think it was needed 
+
+#remove stop words
+set.seed(368)
+cat(stop_words$word[sample(x=1:nrow(stop_words), size=20)], sep=",")
+unique(stop_words$lexicon)
+
+nrow(permit_parking)
+
+permit_parking <- permit_parking %>%
+  filter(!word %in% stop_words$word,
+         str_detect(word, "^[a-z']+$"))
+
+nrow(permit_parking)
+
+# removing stop words removed 550,000 words from the data.
+# now, how does that change the prediction of event type based on words and borough?
+
+#Split the data
+train_index <- createDataPartition(permit_parking$EventType, p=.7, list=FALSE)
+permit_parking_train <- permit_parking[train_index,]
+permit_parking_test <- permit_parking[-train_index,]
+
+start_time <- Sys.time()
+parking_model_nb <- naiveBayes(EventType ~., data=permit_parking_train)
+
+end_time <- Sys.time()
+process_time <- end_time - start_time
+process_time
+
+
+parking_predict_nb <- predict(parking_model_nb, newdata = permit_parking_test, type="class")
+confusionMatrix(permit_parking_test$EventType,parking_predict_nb) #91% percent accuracy; a significant improvement over the 44% accuracy calculated using the non-tokenized data.
+
+```
+
+5. Which streets are most affected by permits? Make a word cloud of common streets.
+
+While tokenization was performed on the data to improve make the NB algorithm's accuracy for precinct prediction, we thought it would be interesting to create a word cloud of the most common street names. The most frequent is Broadway, followed by Park and Boulevard. 
+
+```{r wordcloud}
+#just because I like word clouds.  
+# I want to remove some more common words, like north, south, street, avenue, etc.
+more_stop_words <- c("north","south","east","west","avenue","street","road","plaza","ave")
+
+nrow(permit_parking)
+permit_parking <- permit_parking %>%
+  filter(!word %in% more_stop_words,
+         str_detect(word, "^[a-z']+$"))
+nrow(permit_parking)
+permit_parking %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words=100))
+permit_parking %>%
+ count(word) %>%
+ with(wordcloud(word, n, max.words=100, colors=brewer.pal(10, "Dark2")))
+
+```
+
+We have successfully answered all five questions posed at the beginning of this report, with only minor hiccups. Most time was spent on setting up the map to show the most popular category based on zip code as well as an effort to predict the police precinct based on the other variables. Tokenization helped us to achieve a much better result. While the tokenization was already performed, we thought it interesting to determine the most popular streets, or streets that we were affected most by the permits, presented in a word cloud.
+
+The following models were used in an attempt to answer question 4, but we were unable to get them to work or complete.
+
+```{r Junk Models That Do not Work}
+#Decision Tree
+#set.seed(120)
+#decision_model <- rpart(Category ~ ., data = permit_train2,control = rpart.control(minsplit = 1, type = "prob", #minbucket = 0, maxdepth = 30))
+#prediction test
+#predict.tree <- predict(decision_model, newdata = permit_test2, method = "class")
+#predict.tree <- round(predict.tree,digits=0) #round outputs
+#permit_cat_table <- table(factor(predict.tree, levels=min(permit_test2$Category):max(permit_test2$Category)), 
+#      factor(permit_test2$label, levels=min(permit_test2$Category):max(permit_test2$Category)))
+#confusionMatrix(permit_cat_table)
+
+#Random Forest
+#set.seed(120)
+#model_rf <- (train(Category ~ ., data = permit_train2, method = "rf",preProcess = c("center", "scale"),
+#                   family= "binomial")) #binomial characterizes the logit model used
+#model_rf
+#predict_rf <- predict(model_rf, newdata = text_test)
+
+#KNN
+#model_knn <- train(permit_train2$Category ~ ., data = permit_train2, method = "knn",
+#    tuneGrid = data.frame(k = seq(1, 25)), #sequence from 1 to 25
+#    trControl = trainControl(method = "repeatedcv", 
+#    number = 3, repeats = 3))
+#predict_knn <- predict(model_knn, newdata = permit_test)
+#confusionMatrix(predict_knn, permit_test$Category, positive = "pos")
+#plot(model_knn)
+```
