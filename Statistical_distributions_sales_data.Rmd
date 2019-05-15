@@ -1,0 +1,213 @@
+---
+title: "Visible and NIR Laser Diode Quantities Purchased, 2014-2019"
+output:
+  flexdashboard::flex_dashboard
+    #orientation: columns
+    #vertical_layout: fill
+runtime: shiny
+---
+
+```{r Install Packages, results="hide"}
+#if (!require("devtools"))
+#  install.packages("devtools")
+#devtools::install_github("rstudio/rsconnect")
+#install.packages("pacman")
+options(repos="https://cran.rstudio.com" )
+install.packages("flexdashboard")
+install.packages("tidyverse")
+install.packages("grid")
+install.packages("readxl")
+install.packages("ggplot2")
+install.packages("plotly")
+library(flexdashboard)
+library(tidyverse)
+library(grid)
+library(readxl)
+library(ggplot2)
+library(plotly)
+#pacman::p_load(rsconnect,flexdashboard,tidyverse,grid,readxl,ggplot2,plotly)
+```
+
+Intro
+=======================================================================
+
+This report, which implements Shiny API functionality, reviews quantity sold data for two types of laser diodes (LDs) at a company: one dataset consists of LDs in the visible wavelength range, while the other dataset is the near-infrared (NIR) range. Included are histograms to show distributions as well as bar plots to show which batches are most popular (e.g., is volume pricing for 6 more popular than volume pricing for 11?).
+
+First, we look at the full distribution of each dataset, which is left skewed. However, viewing the full distribution means we also see the outliers, which stretch all the way to 1500 (for visible) and 2184 (for NIR). See the two graphs below.
+
+We obviously want to ignore the distribution tail that stretches out that far, and I think honing in on the finer details of the distribution from 1-15 quantities sold is more telling, since volume pricing is offered in 1, 6, and 11 pieces. These  tabs show more histograms as well as a bar plot to see the quantities purchased in this range. The Visible LD Graphs and NIR LD Graphs tabs show more histograms as well as a bar plot to see the quantities purchased in this range.
+
+I think the bar plots are particularly telling about which volume pricing option is most popular. LDs sold in quantities of 1 are the most popular, usually followed by the "Other" category, which encompasses quantities that are >1 but <6 as well as >6 but less <11; basically, quantities that are in-between the volume pricing batches.
+
+<b>Note</b>: Since these data are proprietary, only the code and text are shown in this report.
+
+```{r Data Vis}
+vis_data <- read_excel("LD_sales_2019.xlsx",sheet="Visible",col_names = TRUE, col_types = NULL, na = "", skip = 0)
+vis_data <- vis_data[6:12598,c(1,3)]
+colnames(vis_data) <- c("Item", "Quantity")
+vis_data$Quantity <- as.numeric(vis_data$Quantity)
+# find max and min values of quantities purchased
+#max(vis_data$Quantity) # 1500
+#min(vis_data$Quantity) # -50
+# create separate dataframes for LDs sold in 1, 6, 11 batches and 1, 10, 20, 51, and 101 batches.
+#lds <- c("L405G2", "L450G1", "L515A1")
+#vis_group1 <- vis_data[!grep1(lds,collapse="|"), vis_data$Item]
+# categorize data for bar plot
+vis_data$Label <- case_when(
+    vis_data$Quantity < 1 ~ as.character("<1"),
+    vis_data$Quantity == 1 ~ as.character("1"),
+    vis_data$Quantity == 6 ~ as.character("6"),
+    vis_data$Quantity == 11 ~ as.character("11"),
+    vis_data$Quantity > 11 ~ as.character(">11"),
+    TRUE ~ as.character("Other"))
+```
+
+```{r Data NIR}
+nir_data <- read_excel("LD_sales_2019.xlsx",sheet="NIR",col_names = TRUE, col_types = NULL, na = "", skip = 0)
+nir_data <- nir_data[6:7709,c(1,3)]
+colnames(nir_data) <- c("Item", "Quantity")
+nir_data$Quantity <- as.numeric(nir_data$Quantity)
+# find max and min values of quantities purchased
+#max(nir_data$Quantity) # 2184
+#min(nir_data$Quantity) # -100
+# create separate dataframes for LDs sold in 1, 6, 11 batches and 1, 10, 20, 51, and 101 batches.
+#lds2 <- c("L785H1")
+#nir_group1 <- nir_data[!grep1(lds2,collapse="|"), nir_data$Item]
+# categorize data for bar plot
+nir_data$Label <- case_when(
+    nir_data$Quantity < 1 ~ as.character("<1"),
+    nir_data$Quantity == 1 ~ as.character("1"),
+    nir_data$Quantity == 6 ~ as.character("6"),
+    nir_data$Quantity == 11 ~ as.character("11"),
+    nir_data$Quantity > 11 ~ as.character(">11"),
+    TRUE ~ as.character("Other"))
+```
+
+```{r }
+hist(vis_data$Quantity, breaks=100, xlab = "Qty. Purchased",main = paste("Full Distribution of Visible LDs"))
+hist(nir_data$Quantity, breaks=100, xlab = "Qty. Purchased",main = paste("Full Distribution of NIR LDs"))
+```
+
+
+Visible LD Graphs
+=======================================================================
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+<b>Histogram tab:</b><br />
+Use the tools below to change the number of bins as well as the bandwidth, which is simply a curve that fits the histogram. The histogram shows distribution of all visible LDs where the quantity purchased is between 1 and 15. For full distributions, take a look at the Individual Histograms tab.
+```{r}
+selectInput("n_breaks", label = "Number of bins:",
+            choices = c(1, 3, 5, 10, 15), selected = 5)
+
+sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+            min = 1, max = 2, value = 1.5, step = 0.1)
+```
+
+<b>Individual Histograms tab:</b><br />
+Below are individual histograms (organized in a lattice form to display all item #s) showing the distribution of LD quantities sold from 1 to 15. Note that item #s L405G2, L450G1, L515A1, and L785H1 offer volume pricing for 1, 10, 20, 51, and 101 pieces.
+
+<b>Bar Plots tab:</b><br />
+The bar plots (again, in a lattice to display all item #s) count the number of LDs purchased in one of 6 groups: <1, 1, 6, 11, >11, and "Other". The "Other" category simply catches quantities purchased between the volume pricing options, i.e., it contains the number of LDs purchased (x) in these quantities:
+1 < x < 6
+7 < x < 11
+
+row {.tabset }
+-----------------------------------------------------------------------
+
+### Histogram
+
+```{r}
+renderPlot({
+  with(vis_data, hist(Quantity[Quantity >= 1 & Quantity <= 15], probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Qty. Purchased", main = "Histogram of All Visible LDs, Qty. Purchased b/w 1 and 15"))
+  
+  dens <- density(vis_data$Quantity, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```
+
+### Individual Histograms
+```{r Histograms Vis}
+# visible LD histograms
+#histogram(~Quantity|Item,data=vis_data, type="count", xlab="Qty. Purchased", main="Individual Histograms of Qty. Purchased", breaks=c(6))
+vis_hist <- qplot(Quantity, facets = ~ Item, data = vis_data, geom="histogram", ylim=c(0,200), binwidth = 0.5, main="Individual Histograms of Qty. Purchased", xlab = "Qty. Purchased", ylab = "Frequency") + theme(plot.title = element_text(hjust = 0.5)) + scale_x_continuous(breaks = seq(0, 15, 5), lim = c(0,15))# +theme(axis.text=element_text(size=4))
+ggplotly(vis_hist)
+```
+
+
+
+### Bar Plots
+```{r Bar Plots}
+positions <- c("<1", "1", "6", "11", ">11","Other") # write positions of labels on x-axis
+
+# visible LDs bar plot
+vis_bar <- qplot(Label, facets = ~ Item, data = vis_data,geom="bar", main="Individual Bar Plots of Qty. Purchased", xlab = "Qty. Purchased", ylab = "Count") + theme(plot.title = element_text(hjust = 0.5)) + scale_x_discrete(limits = positions)+ scale_y_continuous(breaks = seq(0, 400, 100), lim = c(0,400))# +theme(axis.text=element_text(size=4))
+ggplotly(vis_bar)
+
+```
+
+NIR LD Graphs
+=======================================================================
+Column {.sidebar}
+-----------------------------------------------------------------------
+### NIRLaser Diodes
+
+
+<b>Histogram tab:</b><br />
+Use the tools below to change the number of bins as well as the bandwidth, which is simply a curve that fits the histogram. The histogram shows distribution of all visible LDs where the quantity purchased is between 1 and 15. For full distributions, take a look at the Individual Histograms tab.
+
+```{r}
+selectInput("n_breaks", label = "Number of bins:",
+            choices = c(1, 3, 5, 10, 15), selected = 5)
+
+sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+            min = 1, max = 2, value = 1.5, step = 0.1)
+```
+<b>Individual Histograms tab:</b><br />
+Below are individual histograms showing the full distribution of LD quantities sold, limited from 1 to 15. If outliers are included, then there will only be one large bar that spans 0-50, which doesn't provide enough detail. Note that item #s L405G2, L450G1, L515A1, and L785H1 offer volume pricing for 1, 10, 20, 51, and 101 pieces.
+
+<b>Bar Plots tab:</b><br />
+These bar plots show the frequency of quantities purchased, categorized into 6 groups: <1, 1, 6, 11, >11, and Other. The Other category contains the number of LDs purchased (x) in these quantities:
+1 < x < 6
+7 < x < 11
+
+row {.tabset }
+-----------------------------------------------------------------------
+
+### Histogram
+
+```{r}
+renderPlot({
+  with(nir_data, hist(Quantity[Quantity >= 1 & Quantity <= 15], probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Qty. Purchased", main = "Histogram of All NIR LDs, Qty. Purchased b/w 1 and 15"))
+  
+  dens <- density(nir_data$Quantity, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```
+
+### Individual Histograms
+
+```{r Histograms NIR}
+# NIR LD histograms
+#histogram(~Quantity|Item,data=nir_data, type="count", xlab="Qty. Purchased", main="Individual Histograms of Qty. Purchased", breaks=c(6))
+
+nir_hist <- qplot(Quantity, facets = ~ Item, data = nir_data, geom="histogram", xlim=c(1,15), ylim=c(0,150), binwidth = 0.5, main="Individual Histograms of Qty. Purchased", xlab = "Qty. Purchased", ylab = "Frequency") + theme(plot.title = element_text(hjust = 0.5))+ scale_x_continuous(breaks = seq(0, 15, 5), lim = c(0,15))# +theme(axis.text=element_text(size=4))
+ggplotly(nir_hist)
+```
+
+### Bar Plots
+
+```{r Bar Plots NIR}
+positions <- c("<1", "1", "6", "11", ">11","Other") # write positions of labels on x-axis
+
+# NIR LDs bar plot
+nir_bar <- qplot(Label, facets = ~ Item, data = nir_data,geom="bar", main="Individual Bar Plots of Qty. Purchased", xlab = "Qty. Purchased", ylab = "Count") + theme(plot.title = element_text(hjust = 0.5)) + scale_x_discrete(limits = positions)+ scale_y_continuous(breaks = seq(0, 400, 100), lim = c(0,400))#+theme(axis.text=element_text(size=4))
+ggplotly(nir_bar)
+```
+
+
+
+
+
