@@ -1,0 +1,247 @@
+---
+title: "db_forecast_ANN"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+```{r install packages, include=FALSE,echo=FALSE,message = FALSE, warnings = FALSE}
+#install.packages("pacman")
+pacman::p_load(nnfor,forecast,tidyverse,readxl,tseries,lmtest,xts,tibble,dplyr)
+```
+
+## Reading in the Data
+This exercise seeks to forecast 2018 sales for "dB Company" and the country in which the company resides, called "Country," using artifical neural networks. Specifically, the models will use Kourentzes' wonderful nnfor package: specifically, we'll train two different types of ANN models using 2014-2017 sales to forecast 2018 sales: extreme learning machine (ELM) and multilayer perceptron (MLP). The models' accuracy will be tested against actual 2018 sales. The data are real-world business data, and proprietary information is shielded. The time series data frequency is 52 weeks.
+
+The original datasets, pulled from a sales cube, are not truly time series because they only show days on which a transaction was completed, so there are missing days. Below are the top 10 rows of each dataset.
+
+```{r Data,echo=FALSE,message = FALSE, warnings = FALSE}
+setwd("U:/MMclure/Data & Sales Cube Reports/Sales data/dB Electronics")
+
+# convert sales data to daily time series
+db_sales <- read_excel("dB_Sales.xlsx",sheet="dB_Sales",col_names = TRUE, col_types = NULL, na = "", skip = 0)
+Country_sales <- read_excel("dB_Sales.xlsx",sheet="all_Italy",col_names = TRUE, col_types = NULL, na = "", skip = 0)
+colnames(db_sales) <- c("Date", "Sales")
+colnames(Country_sales) <- c("Date", "Sales")
+db_sales$Date <- as.Date(db_sales$Date, origin = "1899-12-30")
+Country_sales$Date <- as.Date(Country_sales$Date, "%m-%d-%Y")
+# fill in missing dates to make this true time series
+db_sales <- db_sales %>% complete(Date = seq.Date(min(Date), max(Date), by="day"))
+Country_sales <- Country_sales %>% complete(Date = seq.Date(min(Date), max(Date), by="day"))
+# convert NAs to zeroes
+db_sales[is.na(db_sales)] <- 0
+Country_sales[is.na(Country_sales)] <- 0
+head(db_sales)
+head(Country_sales)
+```
+The data are now truly time series and show every day from the beginning of 2014 to the end of 2018. However, we've subsequently added a lot of zeroes, which could negatively impact the model. To compensate, we'll aggregate daily sales into weekly sales, and build the model from there. Here are the top 10 rows of the time series datasets.
+```{r Data Continued,echo=FALSE,message = FALSE, warnings = FALSE}
+# convert daily data to weekly
+db_sales_full <- as.xts(db_sales$Sales,order.by=db_sales$Date)
+db_sales_full <- apply.weekly(db_sales_full,sum)
+db_sales_full <- data.frame(Date=index(db_sales_full), coredata(db_sales_full))
+colnames(db_sales_full) <- c("Date", "Sales")
+ytd_2018_db <- db_sales_full[210:261,]
+db_sales <- db_sales_full[1:209,]
+Country_sales_full <- as.xts(Country_sales$Sales,order.by=Country_sales$Date)
+Country_sales_full <- apply.weekly(Country_sales_full,sum)
+Country_sales_full <- data.frame(Date=index(Country_sales_full), coredata(Country_sales_full))
+colnames(Country_sales_full) <- c("Date", "Sales")
+ytd_2018_Country <- Country_sales_full[209:260,]
+Country_sales <- Country_sales_full[1:208,]
+head(db_sales)
+head(Country_sales)
+db_graph <- ggplot(db_sales, aes(Date, Sales)) + geom_line() + scale_x_date('Year')  + ylab("Weekly Sales") + xlab("")+ ggtitle("dB Weekly Sales Data") 
+Country_graph <- ggplot(Country_sales, aes(Date, Sales)) + geom_line() + scale_x_date('Year')  + ylab("Weekly Sales") + xlab("")+ ggtitle("Country Weekly Sales Data") 
+db_graph
+Country_graph
+```
+## Search for Outliers
+
+After the data are imported, we identify and eliminate outliers in both the dB and Country sales datasets. The idea is to remove outliers that will negatively influence the predictability of the model. Note that we could also smooth the data using a moving average to reduce the volatility. However, to encourage the most accurate predictions, each model will be constructed using the outlier-reduced data instead. The ts function helps to create a time series object in R as well as the tsclean function, which seeks and replaces outliers.
+
+```{r dB Outliers,echo=FALSE,message = FALSE, warnings = FALSE}
+db_sales_ts = ts(db_sales[, c('Sales')])
+db_sales$clean_sales = tsclean(db_sales_ts)
+ggplot() + geom_line(data = db_sales, aes(x = Date, y = clean_sales)) + ylab('Cleaned Sales')+ ggtitle("dB Weekly Sales Data, Cleaned") 
+```
+
+```{r Country Outliers,echo=FALSE,message = FALSE, warnings = FALSE}
+Country_sales_ts = ts(Country_sales[, c('Sales')])
+Country_sales$clean_sales = tsclean(Country_sales_ts)
+ggplot() + geom_line(data = Country_sales, aes(x = Date, y = clean_sales)) + ylab('Cleaned Sales') + ggtitle("Country Weekly Sales Data, Cleaned") 
+```
+
+## Time Series Decomposition
+
+Decomposition extracts components such as seasonality and trends/cyclicity from the data to help us determine which parameters in the neural network will need tuning. Specifically, if seasonality and trends are present, then we'll need to account for them by identifying lags and/or by differencing.
+
+The mslt function, a multiplicative version of stl to allow for multiple seasonal periods, outputs the time series into decomposed components.
+
+Note that, according to the graphs below, the data relatively stationary; seasonality isn't obvious. There is an upward trend, however, so we accoujnt for this by attempting to flatten it out through differencing (1st differencing for dB; 2nd differencing for Country)
+
+```{r dB Decomposition,echo=FALSE,message = FALSE, warnings = FALSE}
+#db_sales_clean = ts(na.omit(db_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
+#decomposition_db = mstl(db_sales_clean, s.window="periodic")
+#nonseasonal_db_sales <- seasadj(decomposition_db) # subtract the seasonal components from the data
+#plot(decomposition_db) # before seasonality is removed
+
+db_sales_clean <- ts(na.omit(db_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
+decomposition_db <- mstl(db_sales_clean, s.window="periodic")
+plot(decomposition_db)
+#db_sales_clean <- seasadj(decomposition_db) # subtract the seasonal components from the data
+db_sales_clean <- diff(db_sales_clean, differences = 1)
+decomposition_db <- mstl(db_sales_clean, s.window="periodic")
+plot(decomposition_db)
+```
+
+```{r Country Decomposition,echo=FALSE,message = FALSE, warnings = FALSE}
+#Country_sales_clean = ts(na.omit(Country_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
+#decomposition_Country = mstl(Country_sales_clean, s.window="periodic")
+#nonseasonal_Country_sales <- seasadj(decomposition_Country) # subtract the seasonal components from the data
+#plot(decomposition_Country) # before seasonality is removed
+#plot(nonseasonal_Country_sales)# sales are stationary
+
+
+Country_sales_clean <- ts(na.omit(Country_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
+decomposition_Country <- mstl(Country_sales_clean, s.window="periodic")
+plot(decomposition_Country)
+#Country_sales_clean <- seasadj(decomposition_Country) # subtract the seasonal components from the data
+Country_sales_clean <- diff(Country_sales_clean, differences = 2)
+decomposition_Country <- mstl(Country_sales_clean, s.window="periodic")
+plot(decomposition_Country)
+```
+
+## Stationarity Test
+
+To confirm if the data are truly stationary, we invoke the Dickey-Fuller test. The null hypothesis is that the data are non-stationary, with an alpha value of 0.05 or 5%. The p-value needs to be less than or equal to 0.05 in order to reject the null hypothesis, indicating we are at least 95% certain the alternative hypothesis, which is the data are stationary, is truer than the null hypothesis. Viewing the results, we can safely reject the null hypothesis because the p-value is <0.01.
+
+```{r Stationariy Test,echo=FALSE,message = FALSE, warnings = FALSE}
+adf.test(db_sales_clean, alternative = "stationary") # p-value: <0.01
+adf.test(Country_sales_clean, alternative = "stationary") # p-value: <0.01
+```
+
+## ACF and PACF
+
+Let's look at the ACF and PACF of the data to identify lagged values, or lags. If a series' lags correlate or repeat, then there most likely is a seasonal component to the series, which we'll want to account for. Identifying the lags helps to indicate which parameters to adjust in the ANN models.
+
+The ACF shows a spike at lag1, and the PACF shows spikes around a number of lags, so this can be accounted for the in the models if necessary. Otherwise, the peaks look relatively flat, and there's no obvious trend (e.g., sinusoidal characteristic).
+
+```{r dB ACF and PACF,echo=FALSE,message = FALSE, warnings = FALSE}
+Acf(db_sales_clean, main='ACF')
+Pacf(db_sales_clean, main='PACF')
+```
+
+```{r Country ACF and PACF,echo=FALSE,message = FALSE, warnings = FALSE}
+Acf(Country_sales_clean, main='ACF')
+Pacf(Country_sales_clean, main='PACF')
+```
+
+## Building the ANN Models
+Neural networks do not capture trends well, but we've already accounted for this in the Time Series Decomposition section above. If further differencing were needed, the ELM and MLP functions feature a difforder parameter for added differencing.
+
+We start out by using the base elm() and mlp() functions without tuning the parameters; the models are fitted automatically. elm() shows no good fit for either datasets, so a second model is created with tweaked parameters, which shows a slightly more "active" forecast (contrast the first ELM plot with the second). For both dB and Country sales data, the model fits historical data ostensibly well using the MLP function; thus, tweaking the parameters isn't necessary.
+
+All the models yield modest forecasts -- the peaks aren't substantial enough to reflect the historical data. To determine the total 2018 sales forecasted, we must retrieve the non-differenced data through an integration method, the diffinv() function. Comparing actual 2018 sales data with the models' projections, we find that the models are not accurate enough. Here are the results:
+
+Thus, the models could use additional pruning, or we could attempt to project only 6 months ahead. The latter choice may be more fortuitous due to the increasingly larger uncertainty in the models (i.e., the gray spikes in the period).
+
+```{r dB ANN 2018,echo=FALSE,message = FALSE, warnings = FALSE}
+# ELM
+fit_elm <- elm(db_sales_clean)
+forecast_db <- forecast(fit_elm,h=52)
+plot(forecast_db)
+fit_elm
+# the model doesn't fit historical data well; create a second model to adjust fit by tuning parameters of ELM function
+
+fit_elm2 <- elm(db_sales_clean, m=frequency(db_sales_clean),reps=50, comb = c("median"),lags=1:50,difforder=2,outplot=TRUE)
+forecast_db2 <- forecast(fit_elm2,h=52)
+plot(forecast_db2)
+# retrieve forecasted values by inversing the differenced values
+sum(abs(diffinv(forecast_db2$mean,lag=1)))
+
+# MLP
+fit_mlp <- mlp(db_sales_clean)
+frc <- forecast(fit_mlp,h=52)
+plot(frc)
+fit_mlp
+# retrieve forecasted values by inversing the differenced values
+sum(abs(diffinv(frc$mean)))
+
+#fit_mlp2 <- mlp(db_sales_clean,m=frequency(db_sales_clean),reps=50, comb = c("mean"),lags = 1:15, difforder=NULL,outplot=TRUE,sel.lag=FALSE)
+#frc2 <- forecast(fit_mlp2,h=52)
+#plot(frc2)
+```
+
+```{r Country ANN 2018,echo=FALSE,message = FALSE, warnings = FALSE}
+# ELM
+fit_Country_elm <- elm(Country_sales_clean)
+forecast_Country <- forecast(fit_Country_elm,h=52)
+plot(forecast_Country)
+fit_Country_elm
+# the model doesn't fit historical data well; create a second model to adjust fit by tuning parameters of ELM function
+
+fit_Country_elm2 <- elm(Country_sales_clean,m=frequency(Country_sales_clean),reps=50, comb = c("median"),lags=1:50,difforder=2,outplot=TRUE)
+forecast_Country2 <- forecast(fit_Country_elm2,h=52)
+plot(forecast_Country2)
+# retrieve forecasted values by inversing the differenced values
+sum(abs(diffinv(forecast_Country2$mean)))
+
+# MLP
+fit_Country_mlp <- mlp(Country_sales_clean)
+plot(fit_Country_mlp)
+frc_Country <- forecast(fit_Country_mlp,h=52)
+plot(frc_Country)
+fit_Country_mlp
+# retrieve forecasted values by inversing the differenced values
+sum(abs(diffinv(frc_Country$mean)))
+
+#fit_Country_mlp2 <- mlp(Country_sales_clean,m=frequency(Country_sales_clean),reps=50, comb = c("mean"),lags = 1:5,difforder=NULL,outplot=TRUE,sel.lag=FALSE)
+#frc_Country2 <- forecast(fit_Country_mlp2,h=52)
+#plot(frc_Country2)
+#fit_Country_mlp2
+```
+### References
+"nnfor" official package documentation.
+https://kourentzes.com/forecasting/2019/01/16/tutorial-for-the-nnfor-r-package/
+Hyndman, R.J., & Athanasopoulos, G. (2018) Forecasting: principles and practice, 2nd edition, OTexts: Melbourne, Australia. OTexts.com/fpp2. Accessed on 7/25/2019.
+
+<!--## 2019 Predictions
+We test each model above, based on 2014-2017 training data, to verify if 2018 data are predicted accurately. The tweaked models will be selected to predict 2019 total sales.
+
+Now that we have created models through a pretrained dataset with tweaked parameters, we can apply them to the full dataset, which includes actual 2018 sales, in order to predict 2019 sales.
+
+```{r dB ANN 2019,echo=FALSE,message = FALSE, warnings = FALSE}
+# create ts object on full dataset
+db_sales_full_ts = ts(db_sales_full[, c('Sales')])
+db_sales_full$clean_sales = tsclean(db_sales_full_ts)
+db_sales_full = ts(na.omit(db_sales_full$clean_sales), frequency=52)
+
+
+#ELM
+fit_elm_2019 <- elm(db_sales_full, model=fit_elm2)
+forecast_db_2019 <- forecast(fit_elm_2019,h=52)
+plot(forecast_db_2019)
+
+# MLP
+fit_mlp_2019 <- mlp(db_sales_full,model=fit_mlp)
+frc_2019 <- forecast(fit_mlp_2019,h=52)
+plot(frc_2019)
+```
+
+```{r Country ANN 2019,echo=FALSE,message = FALSE, warnings = FALSE}
+# create ts object on full dataset
+Country_sales_full_ts = ts(Country_sales_full[, c('Sales')])
+Country_sales_full$clean_sales = tsclean(Country_sales_full_ts)
+Country_sales_full = ts(na.omit(Country_sales_full$clean_sales), frequency=52)
+
+#ELM
+fit_Country_elm_2019 <- elm(Country_sales_full, model=fit_Country_elm2)
+forecast_Country_2019 <- forecast(fit_Country_elm_2019,h=52)
+plot(forecast_Country_2019)
+
+# MLP
+fit_Country_mlp_2019 <- mlp(Country_sales_full,model=fit_Country_mlp)
+frc_Country_2019 <- forecast(fit_Country_mlp_2019,h=52)
+plot(frc_Country_2019)
+```-->
