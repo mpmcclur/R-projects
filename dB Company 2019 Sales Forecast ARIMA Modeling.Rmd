@@ -12,11 +12,12 @@ pacman::p_load(forecast,tidyverse,readxl,tseries,lmtest,xts,tibble,dplyr)
 ```
 
 ## Reading in the Data
-This exercise seeks to create two separate ARIMA models to forecast 2019 sales for a company called "dB Company" as well as its country of origin, referred to here as "Country". ARIMA, or autoregressive integrated moving average, models are constructed using a number of techniques to identify certain elements of time series data, like seasonality, in order to predict future values.
+This exercise seeks to forecast 2019 sales for "dB Company" and the country in which the company resides, called "Country," using ARIMA models. ARIMA, or autoregressive integrated moving average, models are constructed using a number of techniques to identify certain elements of time series data, like seasonality, in order to predict future values. The data are real-world business data, and proprietary information is shielded. The time series data frequency is 52 weeks.
 
 The original datasets, which are real-world data, are not truly time series because they only show days on which a transaction was completed, so there are missing days.
 ```{r Data}
 # convert sales data to daily time series
+setwd("C:/Users/Matt/Documents/dB")
 db_sales <- read_excel("dB_Sales.xlsx",sheet="dB_Sales",col_names = TRUE, col_types = NULL, na = "", skip = 0)
 Country_sales <- read_excel("dB_Sales.xlsx",sheet="all_Country",col_names = TRUE, col_types = NULL, na = "", skip = 0)
 colnames(db_sales) <- c("Date", "Sales")
@@ -35,14 +36,18 @@ head(Country_sales)
 The data are now truly time series and show every day from the beginning of 2014 to the end of 2018. However, we've subsequently added a lot of zeroes, which could negatively impact the model. To compensate, we'll aggregate daily sales into weekly sales, and build the model from there.
 ```{r Data Continued}
 # convert daily data to weekly
-db_sales <- as.xts(db_sales$Sales,order.by=db_sales$Date)
-db_sales <- apply.weekly(db_sales,sum)
-db_sales <- data.frame(Date=index(db_sales), coredata(db_sales))
-colnames(db_sales) <- c("Date", "Sales")
-Country_sales <- as.xts(Country_sales$Sales,order.by=Country_sales$Date)
-Country_sales <- apply.weekly(Country_sales,sum)
-Country_sales <- data.frame(Date=index(Country_sales), coredata(Country_sales))
-colnames(Country_sales) <- c("Date", "Sales")
+db_sales_full <- as.xts(db_sales$Sales,order.by=db_sales$Date)
+db_sales_full <- apply.weekly(db_sales_full,sum)
+db_sales_full <- data.frame(Date=index(db_sales_full), coredata(db_sales_full))
+colnames(db_sales_full) <- c("Date", "Sales")
+ytd_2018_db <- db_sales_full[210:261,]
+db_sales <- db_sales_full[1:209,]
+Country_sales_full <- as.xts(Country_sales$Sales,order.by=Country_sales$Date)
+Country_sales_full <- apply.weekly(Country_sales_full,sum)
+Country_sales_full <- data.frame(Date=index(Country_sales_full), coredata(Country_sales_full))
+colnames(Country_sales_full) <- c("Date", "Sales")
+ytd_2018_Country <- Country_sales_full[209:260,]
+Country_sales <- Country_sales_full[1:208,]
 head(db_sales)
 head(Country_sales)
 db_graph <- ggplot(db_sales, aes(Date, Sales)) + geom_line() + scale_x_date('Year')  + ylab("Weekly Sales") + xlab("")+ ggtitle("dB Weekly Sales Data") 
@@ -69,34 +74,54 @@ ggplot() + geom_line(data = Country_sales, aes(x = Date, y = clean_sales)) + yla
 
 ## Decomposition for ARIMA Models
 
-ARIMA models require decomposition (the "integrated" component in the acronym). Decomposition extracts components such as seasonality and cyclicity from the data to help us determine the ARIMA parameters, P, D, and Q. Our aim is to remove the seasonality from the data and create the models.
+Decomposition extracts components such as seasonality and cyclicity from the data to help us determine the ARIMA parameters, p (order of AR part), d (degree of differencing), and q (MA part). Specifically, if seasonality and trends are present, then we'll need to account for them by identifying lags and/or by differencing. Decomposition is achieved using the mslt function, a multiplicative version of stl to allow for multiple seasonal periods, outputs the time series into decomposed components.
 
-The seasonal component is determined using the mstl function (a multiplicative version of stl to allow for multiple seasonal periods). This function smooths the data using the mean.
+Note: we will allow the ARIMA functions to implement differencing, if needed (e.g., parameter d in auto.arima() function). This will save time since we will not need to integrate the forecasted data to retrieve the actual values of the forecast.
+
 
 ```{r dB Decomposition}
-db_sales_clean = ts(na.omit(db_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
-decomposition_db = mstl(db_sales_clean, s.window="periodic")
-nonseasonal_db_sales <- seasadj(decomposition_db) # subtract the seasonal components from the data
-plot(decomposition_db)# sales are fairly stationary
+#db_sales_clean = ts(na.omit(db_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
+#decomposition_db = mstl(db_sales_clean, s.window="periodic")
+#nonseasonal_db_sales <- seasadj(decomposition_db) # subtract the seasonal components from the data
+#plot(decomposition_db) # before seasonality is removed
+
+db_sales_clean <- ts(na.omit(db_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
+decomposition_db <- mstl(db_sales_clean, s.window="periodic")
+plot(decomposition_db)
+#db_sales_clean <- seasadj(decomposition_db) # subtract the seasonal components from the data
+#db_sales_clean <- diff(db_sales_clean)
+decomposition_db <- mstl(db_sales_clean, s.window="periodic")
+plot(decomposition_db)
 ```
 
 ```{r Country Decomposition}
-Country_sales_clean = ts(na.omit(Country_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
-decomposition_Country = mstl(Country_sales_clean, s.window="periodic")
-nonseasonal_Country_sales <- seasadj(decomposition_Country) # subtract the seasonal components from the data
-plot(decomposition_Country)# sales are fairly stationary
+#Country_sales_clean = ts(na.omit(Country_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
+#decomposition_Country = mstl(Country_sales_clean, s.window="periodic")
+#nonseasonal_Country_sales <- seasadj(decomposition_Country) # subtract the seasonal components from the data
+#plot(decomposition_Country) # before seasonality is removed
+#plot(nonseasonal_Country_sales)# sales are stationary
+
+Country_sales_clean <- ts(na.omit(Country_sales$clean_sales), frequency=52) # frequency (i.e., number of observations per cycle) is 52 since we have weekly data
+decomposition_Country <- mstl(Country_sales_clean, s.window="periodic")
+plot(decomposition_Country)
+#Country_sales_clean <- seasadj(decomposition_Country) # subtract the seasonal components from the data
+#Country_sales_clean <- diff(Country_sales_clean)
+decomposition_Country <- mstl(Country_sales_clean, s.window="periodic")
+plot(decomposition_Country)
 ```
 ## Stationarity Test
 
 Decomposition takes the first differences of the data to ensure that it is stationary. ARIMA doesn't require stationarity, but we still need to confirm that the data are stationary or non-stationary after decomposition before proceding with the model. We invoke the Dickey-Fuller test to verify. The null hypothesis is that the data are non-stationary, with an alpha value of 0.05 or 5%. The p-value needs to be less than or equal to 0.05 in order to reject the null hypothesis, indicating we are at least 95% certain the alternative hypothesis, which is the data are stationary, is truer than the null hypothesis. Viewing the results, we can safely reject the null hypothesis because the p-value is 0.01.
 
 ```{r Stationariy Test}
-adf.test(db_sales_clean, alternative = "stationary") # p-value: 0.01
-adf.test(Country_sales_clean, alternative = "stationary") # p-value: 0.01
+adf.test(db_sales_clean, alternative = "stationary") # p-value: <0.01
+adf.test(Country_sales_clean, alternative = "stationary") # p-value: <0.01
 ```
 ## ACF and PACF
 
-Further differencing is not needed, so we can begin to build our two ARIMA models. But first, let's look at the ACF and PACF of the data to identify lagged values, or lags. If a series' lags correlate or repeat, then there most likely is a seasonal component to the series, which we'll want to account for. Identifying the lags helps to indicate which parameters (P, D, and/or Q) to adjust, if necessary.
+Let's look at the ACF and PACF of the data to identify lagged values, or lags. If a series' lags correlate or repeat, then there most likely is a seasonal component to the series, which we'll want to account for. Identifying the lags helps to indicate which parameters (p, d, and/or q), or even (P, D, and/or Q) for the season component we'll add to the ARIMA models, to adjust.
+
+The ACF shows a spike at lag 1, and the PACF shows spikes around a number of lags, so this can be accounted for the in the models if necessary. Otherwise, the peaks look relatively flat, and there's no obvious trend (e.g., sinusoidal characteristic).
 
 ```{r dB ACF and PACF}
 Acf(db_sales_clean, main='ACF')
@@ -107,17 +132,16 @@ Pacf(db_sales_clean, main='PACF')
 Acf(Country_sales_clean, main='ACF')
 Pacf(Country_sales_clean, main='PACF')
 ```
-Notice that for both datasets, only lag 0 extends far beyond the boundary. This indicates that the data may be over-differenced, so we'll take this into account when building the ARIMA models.
 
 ## Building ARIMA Models
 
-Now we can build an ARIMA model using the auto.arima function, which automatically "interprets" the data and assigned P, D, and Q parameters. Observing the ACF and PACF of the the auto ARIMA fit helps us to determine if the parameters need to be tweaked. The auto.arima function shows fairly good ACF and PACF plots. However, none of the model's parameters are statistically significant; thus, further adjustment of P, D, and Q parameters are required. In general, though it is not the case here, high peaks are usually indicators of significant autocorrelation at those lags, which is something we must either eliminate or reduce as much as possible.
+Now we can build an ARIMA model using the auto.arima function, which automatically "interprets" the data and assigned p, d, and q parameters. Observing the ACF and PACF of the the auto ARIMA fit helps us to determine if the parameters need to be tweaked. The auto.arima function shows fairly good ACF and PACF plots. However, none of the model's parameters are statistically significant; thus, further adjustment of P, D, and Q parameters are required. In general, though it is not the case here, high peaks are usually indicators of significant autocorrelation at those lags, which is something we must either eliminate or reduce as much as possible.
 
 ```{r dB ARIMA}
 db_arima <- auto.arima(db_sales_clean, seasonal=TRUE,D=1)
 db_arima
-tsdisplay(residuals(db_arima), lag.max=45, main='(2,0,2) Model Residuals')
-db_arima2 <- arima(db_sales_clean, order=c(1,0,0),seasonal = list(order = c(0,1,0),maxit = 10000)) # maxit implemented to increase maximum number of iterations before convergence for the MLE
+tsdisplay(residuals(db_arima), lag.max=45, main='(4,0,0) Model Residuals')
+db_arima2 <- arima(db_sales_clean, order=c(4,1,0),seasonal = list(order = c(1,1,0),maxit = 10000)) # maxit implemented to increase maximum number of iterations before convergence for the MLE
 tsdisplay(residuals(db_arima2), lag.max=45, main='(1,0,1) Model Residuals')
 coeftest(db_arima2) # check statistical significance
 # view roots
@@ -131,8 +155,8 @@ Note that the inverse characteristic roots of the ARIMA models were plotted. The
 ```{r Country ARIMA}
 Country_arima <- auto.arima(Country_sales_clean, seasonal=TRUE, D=1)
 Country_arima
-tsdisplay(residuals(Country_arima), lag.max=45, main='(2,0,2) Model Residuals')
-Country_arima2 <- arima(Country_sales_clean, order=c(2,0,3),seasonal = list(order = c(1,1,0)))
+tsdisplay(residuals(Country_arima), lag.max=45, main='(1,0,0) Model Residuals')
+Country_arima2 <- arima(Country_sales_clean, order=c(1,1,0),seasonal = list(order = c(1,1,0)),method="CSS") # method parameter tells us about roots
 tsdisplay(residuals(Country_arima2), lag.max=45, main='(2,0,3) Model Residuals')
 coeftest(Country_arima2) # check statistical significance
 # view roots
@@ -158,7 +182,7 @@ plot(Country_forecast)
 write.csv(Country_forecast, "Country_forecast.csv")
 #View(as.data.frame(Country_forecast$mean))
 ```
-Forecasted 2019 sales are conservative: for dB Company, the predicted 2019 sales is summed at 1,819,499 euros, whereas Country is summed at  3,949,768 euros. Each model suggests that both dB Company and Country will not gain signficantly in sales in 2019.
+Forecasted 2019 sales are conservative: for dB Company, the predicted 2019 sales is summed at 3,774,632.90 euros, whereas Country is summed at 3,319,420.49 euros. The dB model is a gross overestimation, but the Country will have modest sales in 2019.
 
 ## 2019 Model Validation
 Now it's time to validate how well the model predicts. We will do this by looking at the YTD sales for both dB Company and Country to mid-April (i.e., the first 17 weeks of 2019). First, we'll aggregate the actual YTD 2019 sales into weekly data for comparison with our predicted weekly values. Not only will we compare the mean of predicted sales vs. actual, but we'll also include the models' upper and lower limits (errors) to see how far, if at all, the mean predicted curve differs from the actual curve.
@@ -217,7 +241,7 @@ ytd_2019_Country$Predicted <- Country_forecast_df$coredata.Country_forecast_chun
 Country_lm = lm(Sales ~ Predicted, data=ytd_2019_Country)
 summary(Country_lm)$r.squared
 ```
-So far, the weekly predicted line doesn't fit exactly with the weekly actual curve (the R-squared of the predicted weekly mean versus actual weekly values is only 2%). However, notice that the max and min error bars for our 2019 predicted curve account for actual 2019 sales almost all the time (an exception is late March / early April, where the blue curve lies just above the red error bars). Thus, the model can be still be deemed as a good predictor, as long as we take into account the upper and lower values. Essentially, the determination is that both ARIMA models provide sufficient predictory power to anticipate 2019 sales.
+So far, the weekly predicted line doesn't fit the weekly actual curve (the R-squared of the predicted weekly mean versus actual weekly values is only 2%). On the plus side, the max and min error bars for our 2019 predicted curve account for actual 2019 sales almost all the time (an exception is late March / early April, where the blue curve lies just above the red error bars). Thus, the model fails to charactertize or predict the exact movement of the 2019 data, and the model's estimate of 2019 total sales is modest.
 
 
 ## References
