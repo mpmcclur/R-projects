@@ -154,7 +154,7 @@ confusionMatrix(permit_test$Borough,predict_nb)
 
 4. Based on permit variables such as Zipcode and Borough, can we predict what the entertainment category is?
 
-Employing a similar naive Bayes model to the one used in question 2 yielded mediocre results. To improve the results, we attempted to resample and downsize the data, which proved not to be effective. The model could predict the precinct with only 50% accuracy. In light of this, we formulated numerous other models using different machine learning algorithms (see code at bottom of report) in an attempt to improve the accuracy of the NB model, but we ran into problems such as unwieldy errors and long computation times that never completed. The latter issue was most likely due to the size of the data. Thus, we decided to tokenize the ParkingHeld attribute to see if predictions could be improved using the NB algorithm, which it did. Through tokenization, the algorithm achieved an accuracy of 91%.
+Employing a similar naive Bayes model to the one used in question 2 yielded mediocre results. To improve the results, we attempted to resample and downsize the data, which proved not to be effective. The NB model could predict the precinct with only 50% accuracy. In light of this, we attempted to formulate an alternative linear SVM model but we ran into problems such as unwieldy errors and long computation times that never completed. The latter issue was most likely due to the size of the data vs system limitations. Thus, we decided to tokenize the ParkingHeld attribute to see if predictions could be improved using the NB algorithm, which it did. Through tokenization, the algorithm achieved an accuracy of 91%.
 
 ```{r }
 # Pare down data even more.
@@ -172,14 +172,8 @@ cat_model_nb <- naiveBayes(Category ~.,data=permit_train2)
 cat_predict_nb <- predict(cat_model_nb, newdata = permit_test2, type = "class")
 confusionMatrix(permit_test2$Category,cat_predict_nb) # yields 44% accuracy, which is inadequate. Trying another test.
 
-# we could never get this code to finish.  It never generated any errors but it would never complete process either.  
-#Research into SVM models lead us to articles like this one:
-#https://stats.stackexchange.com/questions/314329/can-support-vector-machine-be-used-in-large-data
-# which incidates that using SVM on very large data sets wasn't recommended because of the raw computing power needed.
-
-
 # SVM Model
-# Getting errors; doesn't work
+# trying SVM since it should be less taxing than non-linear SVM and indicates if features are linearly separable vs the independent assumption of NB
 #set.seed(120)
 #sample2 = sample.split(permit_short, SplitRatio = .10) #use 10% split ratio
 #permit_train2 = subset(permit_short, sample2 == TRUE)
@@ -201,24 +195,28 @@ confusionMatrix(permit_test2$Category,cat_predict_nb) # yields 44% accuracy, whi
 #plot(predict_svm_linear) #constructs histogram showing most frequently occuring predicted labels
 #confusionMatrix(predict_svm_linear, permit_test$Category)
 
+# could not get this code to finish, but it doesn't generate any errors 
+# desiderat on SVM models on large datasets:
+#https://stats.stackexchange.com/questions/314329/can-support-vector-machine-be-used-in-large-data
+# gist: raw computing power needed despite greater simplicity of linear SVMf
+# in addition, linear vs. non-linear approaches: https://www.kdnuggets.com/2016/06/select-support-vector-machine-kernels.html
 
 
 ```
 
 ```{r tokenization}
-# Since we having problems getting decision trees and random forest models to run because of the size constaints, it was decided to tokenize the ParkingHeld attribute and see if we could improve our prediction.
+# Since we having problems generating NB and SVM models due to system limitations, let's tokenize the ParkingHeld attribute and see if we can produce a model with improved accuracy.
 
-#parking held needs to be characters,  not a factor
+# parking held needs to be characters, not a factor
 permit_data$ParkingHeld <- as.character(permit_data$ParkingHeld)
 
 permit_parking <- permit_data %>%
   select(EventID, EventType, ParkingHeld, Borough) %>%
   unnest_tokens(word, ParkingHeld, to_lower=TRUE)
 head(permit_parking, 10)
+# removed redundant stemming 
 
-#I removed stemming because I didn't think it was needed 
-
-#remove stop words
+# remove stop words
 set.seed(368)
 cat(stop_words$word[sample(x=1:nrow(stop_words), size=20)], sep=",")
 unique(stop_words$lexicon)
@@ -231,8 +229,8 @@ permit_parking <- permit_parking %>%
 
 nrow(permit_parking)
 
-# removing stop words removed 550,000 words from the data.
-# now, how does that change the prediction of event type based on words and borough?
+# with stop words removed, 550,000 words removed from dataset, decreasing the size
+# verify possibiity of producing model predicting event type based on words and borough
 
 #Split the data
 train_index <- createDataPartition(permit_parking$EventType, p=.7, list=FALSE)
@@ -254,7 +252,7 @@ confusionMatrix(permit_parking_test$EventType,parking_predict_nb) #91% percent a
 
 5. Which streets are most affected by permits? Make a word cloud of common streets.
 
-While tokenization was performed on the data to improve make the NB algorithm's accuracy for precinct prediction, we thought it would be interesting to create a word cloud of the most common street names. The most frequent is Broadway, followed by Park and Boulevard. 
+While tokenization was performed on the data to improve make the NB algorithm's accuracy for category prediction, we thought it would be interesting to create a word cloud of the most common street names. The most frequent is Broadway, followed by Park and Boulevard. 
 
 ```{r wordcloud}
 #just because I like word clouds.  
@@ -275,34 +273,4 @@ permit_parking %>%
 
 ```
 
-We have successfully answered all five questions posed at the beginning of this report, with only minor hiccups. Most time was spent on setting up the map to show the most popular category based on zip code as well as an effort to predict the police precinct based on the other variables. Tokenization helped us to achieve a much better result. While the tokenization was already performed, we thought it interesting to determine the most popular streets, or streets that we were affected most by the permits, presented in a word cloud.
-
-The following models were used in an attempt to answer question 4, but we were unable to get them to work or complete.
-
-```{r Junk Models That Do not Work}
-#Decision Tree
-#set.seed(120)
-#decision_model <- rpart(Category ~ ., data = permit_train2,control = rpart.control(minsplit = 1, type = "prob", #minbucket = 0, maxdepth = 30))
-#prediction test
-#predict.tree <- predict(decision_model, newdata = permit_test2, method = "class")
-#predict.tree <- round(predict.tree,digits=0) #round outputs
-#permit_cat_table <- table(factor(predict.tree, levels=min(permit_test2$Category):max(permit_test2$Category)), 
-#      factor(permit_test2$label, levels=min(permit_test2$Category):max(permit_test2$Category)))
-#confusionMatrix(permit_cat_table)
-
-#Random Forest
-#set.seed(120)
-#model_rf <- (train(Category ~ ., data = permit_train2, method = "rf",preProcess = c("center", "scale"),
-#                   family= "binomial")) #binomial characterizes the logit model used
-#model_rf
-#predict_rf <- predict(model_rf, newdata = text_test)
-
-#KNN
-#model_knn <- train(permit_train2$Category ~ ., data = permit_train2, method = "knn",
-#    tuneGrid = data.frame(k = seq(1, 25)), #sequence from 1 to 25
-#    trControl = trainControl(method = "repeatedcv", 
-#    number = 3, repeats = 3))
-#predict_knn <- predict(model_knn, newdata = permit_test)
-#confusionMatrix(predict_knn, permit_test$Category, positive = "pos")
-#plot(model_knn)
-```
+We have successfully answered all five questions posed at the beginning of this report, with only minor hiccups. Most time was spent on setting up the map to show the most popular category based on zip code as well as an effort to predict the entertainment category based on the other variables. Tokenization helped us to achieve a much better result. While the tokenization was already performed, we thought it interesting to determine the most popular streets, or streets that we were affected most by the permits, presented in a word cloud.
