@@ -87,7 +87,7 @@ meanC <- mean(schoolC$Completed) #An average of 6 students completed the course 
 meanD <- mean(schoolD$Completed) #An average of 3 students completed the course in school B.
 meanE <- mean(schoolE$Completed) #An average of 27 students completed the course in school B.
 
-#Now we can determine which school has the best completion ration with respect to overall number of students:
+#Now we can determine which school has the best completion ratio with respect to overall number of students:
 statSchoolA <- meanA/sumA #0.012
 statSchoolB <- meanB/sumB #0.023
 statSchoolC <- meanC/sumC #0.074
