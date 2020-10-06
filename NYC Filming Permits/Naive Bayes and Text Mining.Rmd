@@ -4,7 +4,7 @@ author: "Matt McClure with Beth Young"
 date: "September 13, 2018"
 output: html_document
 ---
-A number of data mining techniques, such as implementing the naive Bayes classifier and text mining tokenization and wordcloud, are used on Kaggle's New York City Film Permits dataset. The dataset contains a list of permit events in all five boroughs that are provided for the purpose of film, commercials, television shows, theater, promotional material, etc. Variables include the event's agency as well as the borough, zip code, and entertainment category to which the permit pertains. City permits are required because the events require the use of city property, such as a street, sidewalk, or park.
+A number of data mining techniques, such as implementing the Naive Bayes classifier and text mining tokenization and wordcloud, are used on a New York City Filming Permits dataset. The dataset contains a list of permit events in all five boroughs that are provided for the purpose of film, commercials, television shows, theater, promotional material, etc. Variables include the event's agency as well as the borough, zip code, and entertainment category to which the permit pertains. City permits are required because the events require the use of city property, such as a street, sidewalk, or park.
 
 This report explores the following challenges:
 
