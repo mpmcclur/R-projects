@@ -244,7 +244,7 @@ summary(Country_lm)$r.squared
 ```
 So far, the weekly predicted line doesn't fit the weekly actual curve (the R-squared of the predicted weekly mean versus actual weekly values is only 2%). On the plus side, the max and min error bars for our 2019 predicted curve account for actual 2019 sales almost all the time (an exception is late March / early April, where the blue curve lies just above the red error bars). Thus, the model fails to charactertize or predict the exact movement of the 2019 data, and the model's estimate of 2018 total sales is modest.
 
-Either the model doesn't fit the historical data well to provide an adequate fit, or we're forecasting too far into the future (e.g., consider forecasting only 3-6 months as opposed to 12 months).
+There are three potential issues: 1) The model doesn't fit the historical data well to provide an adequate fit, 2) we're forecasting too far into the future (e.g., consider forecasting only 3-6 months as opposed to 12 months), or 3) the historical data is inadequate (i.e., both the amount and diversity of historical data to account for other influential factors are insufficient).
 
 
 ## References
