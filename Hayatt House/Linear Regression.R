@@ -248,13 +248,13 @@ RegModel.2 <- lm(Likelihood_Recommend_H~Checkin_Length_H+LENGTH_OF_STAY_R,
 
 plot(allEffects(RegModel.2))
 
-#Likelood to recommend based on membership status
+#Likelihood to recommend based on membership status
 MemberStatusLM <- lm(formula=Likelihood_Recommend_H ~ MEMBER_STATUS_R, data=USData)
 MemberStatusLM
 plot(USData$Likelihood_Recommend_H~USData$MEMBER_STATUS_R,xlab="Member Status", ylab="Likelihood to Recommend")
 abline(MemberStatusLM)
 #---------------------------------------------
-#Likeliehood to recommend based on NPS Type
+#Likelihood to recommend based on NPS Type
 LinearModel.1 <- lm(Likelihood_Recommend_H ~ NPS_Type, data=USData)
 crPlots(LinearModel.1, span=0.5)
 avPlots(LinearModel.1, id.method="mahal", id.n=2)
