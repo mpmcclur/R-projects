@@ -7,21 +7,15 @@ output: word_document
 
 ```{r setup}
 #Load packages and data file into R.
-#install.packages("factoextra")
-#install.packages("rgl")
-#install.packages("plot3D")
-#install.packages("fpc")
-library(factoextra)
-library(cluster)
-library(ggplot2)
-library(dplyr)
-library(ggplot2)
-library(maps)
-library(dplyr)
-library(cluster)
-library(rafalib)
-library(rgl)
-library(fpc)
+packages <- c("factoextra","rgl","plot3D","fpc","cluster","ggplot2","dplyr","maps","cluster","rafalib","rgl","fpc")
+package.check <- lapply(packages, FUN = function(x){
+  if(!require(x, character.only=TRUE)){
+    install.packages(x, dependencies=TRUE)
+    library(x, character.only=TRUE)
+  }
+})
+search()
+
 fed_paper <- read.csv("./fedPapers85.csv")
 fed_paper2 <- read.csv("./fedPapers85.csv")
 #Remove second column.
@@ -32,7 +26,7 @@ fed_paper$author <-recode(fed_paper$author,"Hamilton"="1","Madison"="2","Jay"="3
 #Leave fed_paper2 with the names in the "author" column -- we'll need them for labeling later.
 View(fed_paper)
 ```
-We will start with simple k-means to get a feel for the data and should need only 4 clusters. Since Madison, Hamilton, Jay, or Madison & Hamilton are the authors, we want "disputed"" to be clustered into one of the four categories.
+We will start with simple k-means to get a feel for the data and should need only 4 clusters. Since Madison, Hamilton, Jay, or Madison & Hamilton are the authors, we want "disputed" to be clustered into one of the four categories.
 
 But first, let's run the elbow test to check the potential number of clusters and then proceed with k-means clustering.
 ```{r Prepare elbow test}
