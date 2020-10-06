@@ -1,29 +1,21 @@
 ---
-title: "KNN NB, SVM Algorithms on Digit Recognizer Data"
+title: "Digit Recognizer: KNN, NB, SVM"
 author: "Matt McClure"
 date: "September 2, 2018"
 output: word_document
 ---
-Multiple machine learning models using three different algorithms, K nearest neighbor, support vector machine (SVM), and random forest (RF), with be constructed and accuracies compared. The model with the highest accuracy will be determined and then compared to the previous accuracies determined by the decision tree and naive Bayes models in the previous assignment.
+Multiple machine learning models using three different algorithms, K nearest neighbor, support vector machine (SVM), and random forest (RF), with be constructed and accuracies compared. The model with the highest accuracy will be determined and then compared to the previous accuracies determined by the decision tree and Naive Bayes models in "Decision Tree versus Naive Bayes.Rmd".
 ```{r Data Import}
-#install.packages("psych")
-library(caret)
-library(mlbench)
-#library(mlr)
-library(rpart)
-library(rpart.plot)
-library(rattle)
-library(e1071)
-library(C50)
-library(dplyr)
-library(prediction)
-require(caTools)
-require(spls)
-library(ipred)
-library(ElemStatLearn)
-library(klaR)
-library(randomForest)
-library(psych)
+#function to check for installed packages
+packages <- c("psych","caret","mlbench","mlr","rpart","rpart.plot","rattle","e1071","C50","dplyr","prediction","caTools","spls","ipred","ElemStatLearn","klaR","randomForest")
+package.check <- lapply(packages, FUN = function(x){
+  if(!require(x, character.only=TRUE)){
+    install.packages(x, dependencies=TRUE)
+    library(x, character.only=TRUE)
+  }
+})
+search()
+
 text_train <- read.csv("./Kaggle-digit-train.csv")
 text_test <- read.csv("./Kaggle-digit-test.csv")
 text_train$label <- as.factor(text_train$label)
@@ -34,7 +26,7 @@ set.seed(120)
 text_train2$label <- as.factor(text_train2$label)
 text_test2$label <- as.factor(text_test2$label)
 ```
-The original dataset is too large, so I am resorting to the smaller training and test dataset for faster times.Thus, we will prepare the data using the smaller dataset. The data partition consists of 50% of dataset is used for training and 50% is used for validation test to compare model predictions. Essentially, 50% of labeled data is reserved to get an idea of model performance.
+The original dataset is too large, so I am resorting to the smaller training and test dataset for faster times. Thus, we will prepare the data using the smaller dataset. The data partition consists of 50% of dataset is used for training and 50% is used for validation test to compare model predictions. Essentially, 50% of labeled data is reserved to get an idea of model performance.
 ```{r Data Pre-Processing}
 train_index <- createDataPartition(text_train2$label, p = 0.5, list = FALSE) #50% of data from dataset and 50% for evaluation
 text_train <- text_train2[train_index, ]
@@ -44,7 +36,7 @@ First, three KNN models will be built, each with finer parametric tuning.
 ```{r KNN Model}
 set.seed(120)
 model_knn <- train(label ~ ., data = text_train, method = "knn",trControl = trainControl(method = 'cv', number = 3, search = "grid"))
-#The KNN model specifies the 3-fold cross-validation. The search paramter was also added in case it is necessary to construct a grid of hyper-parameters within the KNN model.
+#The KNN model specifies the 3-fold cross-validation. The search parameter was also added in case it is necessary to construct a grid of hyper-parameters within the KNN model.
 model_knn #10 classes with k values 5, 7, and 9, each with an accuracy >82% and kappa >80.
 #Predict with the KNN model:
 predict_knn <- predict(model_knn, newdata = text_test)
@@ -75,7 +67,7 @@ confusionMatrix(predict_knn3, text_test$label, positive = "pos") #Accuracy incre
 #Sensitivity Analysis of KNN
 plot(model_knn3) #there is greater complexity in the curve here compared to the previous two KNN models.
 ```
-We can endeavor to tune the KNN model further, but so far I am satisfied with the accuracy achieved so far. Let's move on to the support vector machine model.
+We can endeavor to tune the KNN model further, but I am satisfied with the accuracy achieved so far. Let's move on to the support vector machine model.
 ```{r Linear SVM Model}
 #Construct an SVM model with the linear kernel.
 set.seed(120)
@@ -87,7 +79,7 @@ svm_model_linear <- suppressWarnings(train(label ~ ., data = text_train,
 svm_model_linear
 plot(svm_model_linear)
 predict_svm_linear <- predict(svm_model_linear, newdata = text_test)
-plot(predict_svm_linear) #constructs histogram showing most frequently occuring predicted labels
+plot(predict_svm_linear) #constructs histogram showing most frequently ocurring predicted labels
 confusionMatrix(predict_svm_linear, text_test$label) #linear SVM shows 89% accuracy
 #Below, I also attempt to construct an RBF (Gaussian, non-linear) SVM model, but the computation time took far too long. More importantly, the RBF kernel will not typically yield a greater accuracy, so it's probably not worth using the resources (and time) required the model to complete.
 
@@ -103,7 +95,7 @@ confusionMatrix(predict_svm_linear, text_test$label) #linear SVM shows 89% accur
 #plot(predict_svm)
 #confusionMatrix(predict_svm, text_test$label)
 ```
-I could build an SVM model based only on the linear kernel, as the RBF-kernal-based model was too time-consuming. The linear-kernel SVM model produced an accuracy of 89%, which is 1% more accurate than the second KNN model.
+I could build an SVM model based only on the linear kernel, as the RBF-kernel-based model was too time-consuming. The linear-kernel SVM model produced an accuracy of 89%, which is 1% more accurate than the second KNN model.
 ```{r Random Forest and Final Results}
 set.seed(120)
 levels(text_train$label) <- make.names(levels(factor(text_train$label)))
@@ -127,8 +119,8 @@ model_comparison <- resamples(list(RF = model_rf, SVMLinear = svm_model_linear))
 summary(model_comparison)
 #Accuracy of linear SVM model in resamples function (87%) differs from what the confusion matrix tells us above (89%). In addition, the accuracy of the first random forest model is 88%, whereas, as calculated not using resamples function, the accuracy of the second random forest model is 54%, which is the worst of all the models.
 ```
-Six different models based upon three different algorithms were constructed to anlayze the Kaggle Digitizer dataset. The linear support vector machine model resulted in a model with the highest accuracy, but only marginally; all three KNN models were nearly just as accurate, and the first random forest model has an accuracy of 88% after resampling with the linear SVM model. It is important to note that I could not perform resampling with the any of the KNN models due to their having different numbers of resamples (/= 25). In addition, I was unable to complete a model using the RBF kernel due to extraneous runtimes.
+Six different models based upon three different algorithms were constructed to analyze the Kaggle Digitizer dataset. The linear support vector machine model resulted in a model with the highest accuracy, but only marginally; all three KNN models were nearly just as accurate, and the first random forest model has an accuracy of 88% after resampling with the linear SVM model. It is important to note that I could not perform resampling with the any of the KNN models due to their having different numbers of resamples (/= 25). In addition, I was unable to complete a model using the RBF kernel due to extraneous runtimes.
 
-Fortunately, only moderately more accurate models were determined by changing a few parameters, so very little tinkering (and hence less time) was spent optimizing the models for better performance. Of course, each model could be further optimized. For example, it is suspicious that I calculated an accuracy of only 54% with the second random forest model, because the first model, which features very similar parameters, has an purported accuracy of 88%; thus, I would need to spend more time with this second model for tuning. Then again, the lower accuracy could be due to errors in my calculation or internal the discrepancies between the the functions that I cannot pinpoint.
+Fortunately, only moderately more accurate models were determined by changing a few parameters, so very little tinkering (and hence less time) was spent optimizing the models for better performance. Of course, each model could be further optimized. For example, it is suspicious that I calculated an accuracy of only 54% with the second random forest model, because the first model, which features very similar parameters, has an purported accuracy of 88%; thus, I would need to spend more time with this second model for tuning. Then again, the lower accuracy could be due to errors in my calculation or internal the discrepancies between the functions that I cannot pinpoint.
 
 Most importantly, each of the models constructed here are more accurate than the models I constructed using decision trees and naive Bayes algorithms in the previous assignment.
