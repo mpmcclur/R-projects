@@ -6,7 +6,7 @@ This financial analytics project explores the import price index of three soft c
 2.  Compare all three commodities to determine their historic and future trends as well as volatility.
 3.  Determine the optimal combination of cocoa beans, sugar, or coffee to trade.
 
-# Additional details
+# Additional Details
 1.  Global price data frequency is monthly (from 1980 to present day), are derived from the U.S. Bureau of Labor Statistics, serve as a global representation of the respective commodity prices, and are priced in U.S. cents per pound.
 2.	Customers: farmers, commercial purchasers, and speculative investors.
 3. The fictionalized photonics company will not be a consumer of these commodities.
@@ -16,3 +16,9 @@ This financial analytics project explores the import price index of three soft c
 2.  Determine how revenue and/or expenses move in time, and, if possible, identify the drivers of a commodity. Each commodity has different drivers that increase or decrease revenue.
 3.  How much capital is need to penetrate into this market?
 4.  Briefly explore the financial portfolio of the commodity of choice.
+
+# Financial Analytics Techniques Used
+1. Kernel density function and normalized commodity prices to detect the presence of multicollinearity.
+2. Intercept and log graphs to characterize the volatility of each commodity.
+3. Loss analysis to predict profits and charactertize kurtosis (volatility).
+4. Tangency portfolios (Markowitz efficiency portfolio frontier for expected market returns) and leverage analyses.
