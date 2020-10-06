@@ -14,7 +14,7 @@ Column {.tabset}
 
 ### Photonics + Soft Commodities?
 
-In order to expand and increase R&D of niche ultrafast lasers, LaserMat Corp is looking to invest in a soft market commodity, such as green coffee arabica, sugar, or cocoa beans. The board of LaserMat wants to take advantage of backwardation of one of these commodities to secure future funds for more advanced research, design, and manufacturing of state-of-the-art picosecond lasers. LaserMat anticipates this the science of technology of such lasers to exponentially exand in both military defense and academic (applied physics) regimes by the year 2030. The more liquid assets LaserMat has, the faster it can accelerate research and experimentation on picosecond lasers. Ideally this market will not cost much to entertain and will be a steady, positive source of income for decades to come. We are asked to determine how far 100 million dollars can take us to enter one of the markets.
+In order to increase R&D into ultrafast lasers, LaserMat Corp is looking to invest in a soft market commodity, such as green coffee arabica, sugar, or cocoa beans. The board of LaserMat wants to take advantage of backwardation of one of these commodities to secure future funds for sustained research, design, and manufacturing of state-of-the-art picosecond lasers. LaserMat anticipates strong demand of picosecond lasers in industrial applications and academic research within the next decade. Thus, the more liquid assets LaserMat has, the faster it can accelerate R&D into its line of lasers. We are asked to determine how far a $100 million investment into these commodities will go.
 
 Specifically, we are to:
 
@@ -88,7 +88,7 @@ p_all <- ggplot(com_all, aes(colour=variable)) +
     geom_line(data = com_all, aes(DATE, 
         Arabica.Coffee, colour = "Coffee")) + coord_cartesian(xlim=c(1980, 2017)) + scale_x_continuous(breaks=seq(1980,2017,5)) + ggtitle("Normalized Commodity Prices") +     theme(plot.title = element_text(hjust = 0.5)) + labs(x = "Year", y = "Normalized Price (A.U.)")
 
-# Functions and code structure below are borrowed from previous project 3.
+# Functions and code structure courtesy of Professor William G. Foote.
 
 data.r <- diff(log(as.matrix(prices[, -1]))) * 100
 # Create size and direction
@@ -195,7 +195,7 @@ acf(coredata(data.xts[,1:3])) # returns
 acf(coredata(data.xts[,4:6])) # sizes
 ```
 
-Cross-correlation functions of cocoa and sugar as well as sugar and coffee are presented to examine if, in terms of volatility, a change in one market leads to changes in the another. The volatility of cocoa and sugar are highly positively correlated, with lags 6 to 14, meaning the volatility of one will be met by the other months later. Another stark contrast is that both cocoa and sugar are negatively correlated with coffee -- there are strong peaks and lags all around. This seems to suggest that the drivers of the volatility of coffee are inversely proportional, with a large temporal lag, to those of cocoa and sugar. Although this information can help us, even if we notice an event in one commodity that may affect our chosen commodity, it will be difficult to direclty translate the lags shown here into a precise time at which the volatilities will occur. They may serve more as a "brace for impact" measure.
+Cross-correlation functions of cocoa and sugar as well as sugar and coffee are presented to examine if, in terms of volatility, a change in one market leads to changes in the another. The volatility of cocoa and sugar are highly positively correlated, with lags 6 to 14, meaning the volatility of one will be met by the other months later. Another stark contrast is that both cocoa and sugar are negatively correlated with coffee -- there are strong peaks and lags all around. This seems to suggest that the drivers of the volatility of coffee are inversely proportional, with a large temporal lag, to those of cocoa and sugar. Although this information can help us, even if we notice an event in one commodity that may affect our chosen commodity, it will be difficult to directly translate the lags shown here into a precise time at which the volatilities will occur. They may serve more as a "brace for impact" measure.
 
 ```{r }
 
@@ -285,7 +285,7 @@ What do the losses for each commodity look like and how much capital would the L
 
 Plotting the expected shortfall allows us to see what are our expected losses. Plotted are probability density vs. returns plots for cocoa, sugar, and coffee.  For cocoa, ES = 12.19 and VaR = 10.12; for sugar, ES = 14.8 and VaR = 15.18; and for coffee, ES = 13.42 and VaR = 12.33. The predicted profit is less for cocoa and highest for coffee. Interestingly, sugar and coffee show larger kurtosis on the right tail compared to the left (the left-skewness is apparent here). We can also see that coffee shows less loss compared to cocoa and sugar.
 
-Aside from the ES and VAR callouts, the kurtosis is also of interest, since that shows us the volatility. Cocoa shows is least volatile, while coffee is the most -- this concurs with previous analyses. Sugar doesn't get away scot-free; the right tail of sugar is also hefty.
+Aside from the ES and VAR callouts, the kurtosis is also of interest since that shows us the volatility. Cocoa shows is least volatile, while coffee is the most -- this concurs with previous analyses. Sugar doesn't get away scot-free; the right tail of sugar is also hefty.
 
 ```{r }
 # Functions and code structure below are borrowed from previous project 3.
@@ -370,7 +370,7 @@ data_moments((exp(data.r/100) -1)* weights.rf) #losses
 
 The 95% loss limits plot shows dollar losses on a U.S. cents per pound per U.S. quantity basis. We will need approximatey $100 to cover the possibilty of the many sampled scenarios we have calculated to reach the expected shortfall 95th percentile to absorb loss at a VaR threshold. There are losses further out to the right.
 
-The threshold exceedances plot below is really the value of our portfolio. The grid simulates the minimum loss to maximum loss, or how much we have exceeded a given threshold, given many thresholds. The exceedance values are on the vertical scale to show the mean exceedances. The black line is the average of the data whenever it exceeds a certain value. At a 95% probability, the black line is between the two red lines. The mean exeedance is increasingly unstable past 25, so we're looking to maintain stability prior to this.
+The threshold exceedances plot below is really the value of our portfolio. The grid simulates the minimum loss to maximum loss, or how much we have exceeded a given threshold, given many thresholds. The exceedance values are on the vertical scale to show the mean exceedances. The black line is the average of the data whenever it exceeds a certain value. At a 95% probability, the black line is between the two red lines. The mean exceedance is increasingly unstable past 25, so we're looking to maintain stability prior to this.
 
 ```{r }
 # Functions and code structure below are borrowed from previous project 3.
