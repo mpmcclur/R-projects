@@ -5,21 +5,17 @@ date: "August 26, 2018"
 output: word_document
 ---
 Introduction:
-The general problem in this assignment is to compare two classification techniques, decision trees and probabilistic naive Bayes. The subject of this comparison is the digit recognizer data. First, I will employ the decision model, which will be loosely based, but featuring different parameters, to the previous decision tree assignment. The code used for naive Bayes modeling will be trial-and-error. First, the data will be loaded in, and then decision tree and naive Bayes models will be constructed.
+The general problem in this assignment is to compare two classification techniques, decision trees and probabilistic naive Bayes. The subject of this comparison is the digit recognizer data. First, I will create a decision model, which will be loosely based on the model constructed in "Decision Tree.Rmd". The code used for naive Bayes modeling will be trial and error. First, the data will be loaded in, and then the decision tree and naive Bayes models will be constructed.
 ```{r Import Data}
-library(rpart)
-library(rpart.plot)
-library(rattle)
-library(e1071)
-library(caret)
-library(C50)
-library(dplyr)
-library(prediction)
-require(caTools)
-require(spls)
-library(ipred)
-library(ElemStatLearn)
-library(klaR)
+packages <- c("rattle","caret","rpart","e1071","rattle","rpart.plot","dplyr","prediction","spls","C50","caTools","ipred","ElemStatLearn","klaR")
+package.check <- lapply(packages, FUN = function(x){
+  if(!require(x, character.only=TRUE)){
+    install.packages(x, dependencies=TRUE)
+    library(x, character.only=TRUE)
+  }
+})
+search()
+
 text_train <- read.csv("./Kaggle-digit-train.csv")
 text_test <- read.csv("./Kaggle-digit-test.csv")
 ```
@@ -124,6 +120,6 @@ text_model_nb3 <- naiveBayes(text_train$label ~ ., data = text_train,
 predict_nb2 <- suppressWarnings(predict(text_model_nb3, newdata = dig_test, type = "class",na.action=na.exclude))
 confusionMatrix(dig_test$label,predict_nb1) #Accuracy increased by 1% and is 53%, which still isn't great, but it is higher than that which what achieved in the decision tree models.
 ```
-Conclusion: Comparing the accuracies of the decision tree and naive Bayes algorithms, the NB algorithms have a higher model accuracy, with the highest accuracy reaching 53%. I also sought to incorporate another measure of the accuracy of the model, which is the RMSE, but I'm not confident the value that was calculated is meaningful. In addition, I could think of a way to incorporate that measure in the naive Bayes models.
+Conclusion: Comparing the accuracies of the decision tree and naive Bayes algorithms, the NB algorithms have a higher model accuracy, with the highest accuracy reaching 53%. I also sought to incorporate another measure of the accuracy of the model, which is the RMSE, but I'm not confident the value that was calculated is meaningful. In addition, I could not think of a way to incorporate that measure in the naive Bayes models.
 
-Thus, after many wasted hours of tinkering (!), my conclusion is that either the naive Bayes algorithm is more suitable with the Kaggle Digitizer dataset, or the decision tree models simply were not optimized enough. It's entirely possible that the decision tree algorithm is more appropriate for this dataset, but that is not demonstrated here.
+The naive Bayes algorithm is more suitable with the Kaggle Digitizer dataset, else the decision tree models are not optimal. It's entirely possible that the decision tree algorithm is more appropriate for this dataset, but that is not demonstrated here.
