@@ -22,7 +22,7 @@ View(fed_paper)
 ```
 Start first by splitting the dataset between dispt. authors and all other (known) authors. The goal is to create a train dataset with the known authors and a test dataset with the dispt. authors to see where the dispt. author lies along the tree. This will help us to indicate which author the model believes is the author of the disputed papers.
 
-The model will be created using recursive partioning, or the rpart function.
+The model will be created using recursive partitioning, or the rpart function.
 ```{r Data Preparation}
 fed_train <- fed_paper[-c(1:11), ]
 fed_test <- fed_paper[-c(12:85), ]
@@ -48,9 +48,9 @@ Now that we have a model, we can perform model predictions.
 ```{r Model Predictions}
 set.seed(120)
 predict(fed_model, fed_test,type = "prob") #type "prob" returns probabilities of classes in columns.
-#The probabilities are shown for all the authors. Here, we see that, aside from disputed paper #3, all papers are most likely (most probably) authored by Madison. There is a small probability that both Hamiltona dn Madison authored the papers, and not probability, except for paper #3, that Hamilton is the author (!). Disputed paper #3 is most likely authored by Jay, but we will see if this holds up in the pre-pruning and post-pruning.
+#The probabilities are shown for all the authors. Here, we see that, aside from disputed paper #3, all papers are most likely (most probably) authored by Madison. There is a small probability that both Hamilton and Madison authored the papers, and is it improbable, except for paper #3, that Hamilton is the author (!), meaning Disputed Paper #3 is most likely authored by Jay, but we will see if this holds up in pre-pruning and post-pruning.
 ```
-Instead of model tuning, we will go straighgt to model pre-pruning in order to increase the accuracy of the model. Pre-pruning can be performed by adding more parameters to the rpart function. This is to prevent the model overfitting the tree and increasing its complexity. The minsplit, minbucket, and maxdepth parameters are very influential here.
+Instead of model tuning, we will go straight to model pre-pruning in order to increase the accuracy. Pre-pruning can be performed by adding more parameters to the rpart function. This is to prevent the model overfitting the tree and increasing its complexity. The minsplit, minbucket, and maxdepth parameters are very influential here.
 
 Minsplit specifies the minimum number of observations that must exist in one node before the tree splits. Minbucket is the minimum number of observations in a leaf. Maxdepth sets the maximum depth of the tree.
 ```{r Model Pre-Pruning}
