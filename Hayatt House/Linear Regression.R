@@ -1,5 +1,3 @@
-# This project explores a massive Hayat House dataset to extract fundamental information as well as implement linear regression techniques.
-
 #function to check for installed packages
 packages <- c("ggplot2","maps","gdata","mapproj","ggmap","zoom","zipcode","readxl","readr","csv","kernlab","e1071","gridExtra","caret","Rcmdr")
 package.check <- lapply(packages, FUN = function(x){
