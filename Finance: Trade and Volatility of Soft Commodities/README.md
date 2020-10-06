@@ -10,3 +10,9 @@ This financial analytics project explores the import price index of three soft c
 1.  Global price data frequency is monthly (from 1980 to present day), are derived from the U.S. Bureau of Labor Statistics, serve as a global representation of the respective commodity prices, and are priced in U.S. cents per pound.
 2.	Customers: farmers, commercial purchasers, and speculative investors.
 3. The fictionalized photonics company will not be a consumer of these commodities.
+
+# Key Business Questions
+1.  Explore aspects of the market for all three commodities to propose to the board of the company which is the best to penetrate.
+2.  Determine how revenue and/or expenses move in time, and, if possible, identify the drivers of a commodity. Each commodity has different drivers that increase or decrease revenue.
+3.  How much capital is need to penetrate into this market?
+4.  Briefly explore the financial portfolio of the commodity of choice.
