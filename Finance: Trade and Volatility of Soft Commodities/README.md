@@ -7,10 +7,10 @@ Use the provided CSV file and execute the .RMD file in RStudio to generate a das
 2.  Compare all three commodities to determine their historic and future trends as well as volatility.
 3.  Determine the optimal combination of cocoa beans, sugar, or coffee to trade.
 
-# Key Business Questions
+# Key Business Objectives
 1.  Explore aspects of the market for all three commodities to propose to the board of the company which is the best to penetrate.
 2.  Determine how revenue and/or expenses move in time, and, if possible, identify the drivers of a commodity. Each commodity has different drivers that increase or decrease revenue.
-3.  How much capital is need to penetrate into this market?
+3.  Determine how much capital is need to penetrate into this market.
 4.  Briefly explore the financial portfolio of the commodity of choice.
 
 # Financial Analytics Techniques Used
