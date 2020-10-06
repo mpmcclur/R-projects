@@ -21,5 +21,4 @@ Use the provided CSV file and execute the .RMD file in RStudio to generate a das
 
 # Additional Details
 1.  Global price data frequency is monthly (from 1980 to present day), are derived from the U.S. Bureau of Labor Statistics, serve as a global representation of the respective commodity prices, and are priced in U.S. cents per pound.
-2.	Customers: farmers, commercial purchasers, and speculative investors.
-3. The fictionalized photonics company will not be a consumer of these commodities.
+2.	Customers: farmers, commercial purchasers, and speculative investors. The fictionalized photonics company will not be a consumer of these commodities.
