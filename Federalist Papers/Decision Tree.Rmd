@@ -6,25 +6,15 @@ output: word_document
 ---
 Install the appropriate packages and load in the data.
 ```{r setup}
-#install.packages("C50")
-#install.packages("caret")
-#install.packages("rpart")
-#install.packages("e1071")
-#install.packages("rattle")
-#installed.packages("rpart.plot")
-#install.packages("rpart")
-#install.packages("prediction")
-#install.packages("spls")
-library(rpart)
-library(rpart.plot)
-library(rattle)
-library(e1071)
-library(caret)
-library(C50)
-library(dplyr)
-library(prediction)
-require(caTools)
-require(spls)
+packages <- c("C50","caret","rpart","e1071","rattle","rpart.plot","rpart","prediction","spls")
+package.check <- lapply(packages, FUN = function(x){
+  if(!require(x, character.only=TRUE)){
+    install.packages(x, dependencies=TRUE)
+    library(x, character.only=TRUE)
+  }
+})
+search()
+
 fed_paper <- read.csv("./fedPapers85.csv")
 #Remove second column.
 fed_paper <- fed_paper[, !(names(fed_paper)%in% c("filename","your"))]
