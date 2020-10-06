@@ -1,38 +1,24 @@
 ---
-title: "HW_8_McClure_Matt"
+title: "Text Mining Deception Data"
 author: "Matt McClure"
 date: "September 9, 2018"
 output: word_document
 ---
 
-Using the deception data set, which is a collection of customer reviews, where some are true and some are fake. Text mining techniques will be performed in order to break down, or tokenize, the reviews into words, and then perform a sentiment analysis. Then, naive  Bayes (NB) and support vector machine (SVM) models will be constructed to predict both the sentiment and whether the review was fake or real (i.e., if the review is a "lie").
+Using the deception data set, which is a collection of customer reviews, where some are true and some are fake. Text mining techniques will be performed in order to break down, or tokenize, the reviews into words, and then perform a sentiment analysis. Then, Naive  Bayes (NB) and support vector machine (SVM) models will be constructed to predict both the sentiment and whether the review was fake or real (i.e., if the review is a "lie").
 
-The first challenge is reading in the data. As-is, R cannot import the CSV file due to there being more columns than column names. Certain reviews include commas, which are then recognized as separate columns.
+The first challenge is reading in the data. As is, R cannot import the CSV file due to there being more columns than column names. Certain reviews include commas, which are then recognized as separate columns.
 
 ```{r Read in Data}
-#install.packages("rgr")
-library(tidytext)
-library(stringr)
-library(dplyr)
-library(tidyr)
-library(wordcloud)
-library(ggplot2)
-library(splitstackshape)
-library(data.table)
-library(SnowballC)
-library(rpart)
-library(rpart.plot)
-library(rattle)
-library(e1071)
-library(caret)
-library(C50)
-library(prediction)
-require(caTools)
-require(spls)
-library(ipred)
-library(ElemStatLearn)
-library(klaR)
-library(rgr)
+#function to check for installed packages
+packages <- c("rgr","tidytext","stringr","dplyr","tidyr","wordcloud","ggplot2","splitstackshape","data.table","SnowballC","rpart","rpart.plot","rattle","caret","e1071", "C50","prediction","caTools","spls","ipred","ElemStatLearn","klaR","rgr")
+package.check <- lapply(packages, FUN = function(x){
+  if(!require(x, character.only=TRUE)){
+    install.packages(x, dependencies=TRUE)
+    library(x, character.only=TRUE)
+  }
+})
+search()
 
 #The data cannot simply be read in using read.csv, since the function separates the "review" column into other columns whenever a comma is present. Thus, I have devised another method for reading in the data.
 lie_data <- read.csv2("./deception_data_converted_final.csv")
@@ -114,10 +100,10 @@ svm_model_linear <- suppressWarnings(train(lie ~ ., data = text_train,
 svm_model_linear
 plot(svm_model_linear)
 predict_svm_linear <- predict(svm_model_linear, newdata = text_test)
-plot(predict_svm_linear) #constructs histogram showing most frequently occuring predicted labels
+plot(predict_svm_linear) #constructs histogram showing most frequently ocurring predicted labels
 confusionMatrix(predict_svm_linear, text_test$lie) #linear SVM shows 86% accuracy, which is slightly lower than the NB model
 ```
-The accuracy for each model predicting "lie" is satisfactory: the NB model predicts an accuracy of 87%, whil the SVM model predicts with 86% accuracy.
+The accuracy for each model predicting "lie" is satisfactory: the NB model predicts an accuracy of 87%, while the SVM model predicts with 86% accuracy.
 ```{r Sentiment ML Models}
 #Naive Bayes Model
 text_train$sentiment <- as.factor(text_train$sentiment)
@@ -136,7 +122,7 @@ svm_model_linear <- suppressWarnings(train(sentiment ~ ., data = text_train,
 svm_model_linear
 plot(svm_model_linear)
 predict_svm_linear <- predict(svm_model_linear, newdata = text_test)
-plot(predict_svm_linear) #constructs histogram showing most frequently occuring predicted labels
+plot(predict_svm_linear) #constructs histogram showing most frequently ocurring predicted labels
 confusionMatrix(predict_svm_linear, text_test$sentiment) #linear SVM shows 88% accuracy, which is the same as the above NB model
 ```
-Both algorithms were able to predict the variables interest, "lie" and "sentiment" with accuracies >86%, which is satisfactory. As such, I did not implement or attempt adjustment of additional tuning parameters. The high accuracy is a reflection of potentially well-constructed ML algorithms as well as satisfactory tokenization of the words. Indeed, the tokenization, sentiment, sentiment score, and wordcloud all were generated successfully, so I am considering this exploration in text mining and predictive analysis successful.
+Both algorithms were able to predict the variables of interest, "lie" and "sentiment", with accuracies >86%, which is satisfactory. As such, I did not implement or attempt to adjust additional tuning parameters. The high accuracy is a reflection of potentially well-constructed ML algorithms as well as satisfactory tokenization of the words. Indeed, the tokenization, sentiment, sentiment score, and wordcloud all were generated successfully, so I am considering this exploration in text mining and predictive analysis successful.
