@@ -6,7 +6,7 @@ output: word_document
 ---
 Install the appropriate packages and load in the data.
 ```{r setup}
-packages <- c("C50","caret","rpart","e1071","rattle","rpart.plot","rpart","prediction","spls")
+packages <- c("C50","caret","rpart","e1071","rattle","rpart.plot","prediction","spls")
 package.check <- lapply(packages, FUN = function(x){
   if(!require(x, character.only=TRUE)){
     install.packages(x, dependencies=TRUE)
@@ -82,7 +82,7 @@ If the value of "upon" is greater than or equal to 0.019, then the author is Ham
 
 This result does not correlate with my findings using K-means or HAC clustering in the previous assignment, where the conclusion was both Hamilton and Madison authored the disputed papers.
 
-Prior to using the rpart function, I created the model using the train function. However, I abandoned this function in favor of rpart because train was not providing meaningful or easily verifiable prediction accuracy.
+Prior to using the rpart function, I created the model using the train function. However, I abandoned this function in favor of rpart because train was not providing meaningful or easily verifiable predictive accuracy.
 
 The most important caveat to this process is that I was unable to test the accuracy of the model. Traditionally, we would test the outcome of the model based on training data against the testing data, which will have the same response variables (i.e., same pool of authors the model determines). Here, we have two different outcome parameters, dispt. vs. Hamilton + Madison + Jay + HM. However, I did test the accuracy by initially splitting the test and training data in half, and I achieved relatively high accuracy (>85%). I primarily used these two algorithms:
 mean(fed_test$pred$dispt == fed_test$author) and sum(fed_test$author==predict)/length(predict)
