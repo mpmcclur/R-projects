@@ -4,7 +4,7 @@ author: "Matt McClure with Beth Young"
 date: "September 13, 2018"
 output: html_document
 ---
-A number of data mining techniques, such as implementing the naive Bayes classifer and text mining tokenization and wordcloud, are used on Kaggle's New York City Film Permits dataset. The dataset contains a list of permit events in all five boroughs that are provided for the purpose of film, commercials, television shows, theater, promotional material, etc. Variables include the event's agency as well as the borough, zip code, and entertainment category to which the permit pertains. City permits are required because the events require the use of city property, such as a street, sidewalk, or park.
+A number of data mining techniques, such as implementing the naive Bayes classifier and text mining tokenization and wordcloud, are used on Kaggle's New York City Film Permits dataset. The dataset contains a list of permit events in all five boroughs that are provided for the purpose of film, commercials, television shows, theater, promotional material, etc. Variables include the event's agency as well as the borough, zip code, and entertainment category to which the permit pertains. City permits are required because the events require the use of city property, such as a street, sidewalk, or park.
 
 This report explores the following challenges:
 
@@ -121,7 +121,7 @@ precinct_predict_nb <- suppressWarnings(predict(precinct_model_nb, newdata = per
 confusionMatrix(permit_test$precinct,precinct_predict_nb) #precinct was predicted with 85% accuracy
 ```
 
-3. Can we predict predict where the event will take place based on certain permit variables?
+3. Can we predict where the event will take place based on certain permit variables?
 
 ```{r }
 
@@ -154,7 +154,7 @@ confusionMatrix(permit_test$Borough,predict_nb)
 
 4. Based on permit variables such as Zipcode and Borough, can we predict what the entertainment category is?
 
-Employing a similar naive Bayes model to the one used in question 2 yielded mediocre results. To improve the results, we attempted to resample and downsize the data, which proved not to be effective. The NB model could predict the precinct with only 50% accuracy. In light of this, we attempted to formulate an alternative linear SVM model but we ran into problems such as unwieldy errors and long computation times that never completed. The latter issue was most likely due to the size of the data vs system limitations. Thus, we decided to tokenize the ParkingHeld attribute to see if predictions could be improved using the NB algorithm, which it did. Through tokenization, the algorithm achieved an accuracy of 91%.
+Employing a similar naive Bayes model to the one used in question 2 yielded mediocre results. To improve the results, we attempted to resample and downsize the data, which proved not to be effective. The NB model could predict the precinct with only 50% accuracy. In light of this, we attempted to formulate an alternative linear SVM model, but we ran into problems such as unwieldy errors and long computation times that never completed. The latter issue was most likely due to the size of the data vs system limitations. Thus, we decided to tokenize the ParkingHeld attribute to see if predictions could be improved using the NB algorithm, which it did. Through tokenization, the algorithm achieved an accuracy of 91%.
 
 ```{r }
 # Pare down data even more.
@@ -192,7 +192,7 @@ confusionMatrix(permit_test2$Category,cat_predict_nb) # yields 44% accuracy, whi
 #svm_model_linear
 #plot(svm_model_linear)
 #predict_svm_linear <- predict(svm_model_linear, newdata = permit_test)
-#plot(predict_svm_linear) #constructs histogram showing most frequently occuring predicted labels
+#plot(predict_svm_linear) #constructs histogram showing most frequently ocurring predicted labels
 #confusionMatrix(predict_svm_linear, permit_test$Category)
 
 # could not get this code to finish, but it doesn't generate any errors 
