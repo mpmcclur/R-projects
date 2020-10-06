@@ -20,5 +20,5 @@ This financial analytics project explores the import price index of three soft c
 # Financial Analytics Techniques Used
 1. Kernel density function and normalized commodity prices to detect the presence of multicollinearity.
 2. Intercept and log graphs to characterize the volatility of each commodity.
-3. Loss analysis to predict profits and charactertize kurtosis (volatility).
+3. Loss analysis to predict profits and visualize kurtosis.
 4. Tangency portfolios (Markowitz efficiency portfolio frontier for expected market returns) and leverage analyses.
