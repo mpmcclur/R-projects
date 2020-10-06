@@ -1,5 +1,5 @@
 ---
-title: "Federalist Papers Decision Tree and Naive Bayes"
+title: "Digit Recognizer: Decision Tree, Naive Bayes"
 author: "Matt McClure"
 date: "August 26, 2018"
 output: word_document
