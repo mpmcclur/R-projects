@@ -1,5 +1,5 @@
 ---
-title: "Digit Recognizer: KNN, NB, SVM"
+title: "Digit Recognizer: KNN, SVM, RF"
 author: "Matt McClure"
 date: "September 2, 2018"
 output: word_document
