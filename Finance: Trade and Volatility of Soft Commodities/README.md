@@ -3,18 +3,18 @@ This financial analytics project explores the import price index of three soft c
 
 Use the provided CSV file and execute the .RMD file in RStudio to generate a dashboard that seeks to investigate the following:
 
-1.  Retrieve and analyze data about potential commodities into which to diversify.
+1.  Retrieve and analyze data about commodities.
 2.  Compare all three commodities to determine their historic and future trends as well as volatility.
 3.  Determine the optimal combination of cocoa beans, sugar, or coffee to trade.
 
 # Key Business Objectives
 1.  Explore aspects of the market for all three commodities to propose to the board of the company which is the best to penetrate.
-2.  Determine how revenue and/or expenses move in time, and, if possible, identify the drivers of a commodity. Each commodity has different drivers that increase or decrease revenue.
-3.  Determine how much capital is need to penetrate into this market.
-4.  Briefly explore the financial portfolio of the commodity of choice.
+2.  Determine how revenue and/or expenses move in time and, if possible, identify the drivers, since each commodity has different drivers that increase or decrease revenue.
+3.  Determine how much capital is needed to penetrate into a market. (Looking at indexes, it's a matter of time rather than money; for futures, it's a matter of both.)
+4.  Briefly explore the financial portfolio of a commodity of choice.
 
 # Financial Analytics Techniques Used
-1. Kernel density function and normalized commodity prices to detect the presence of multicollinearity.
+1. Kernel density function and normalized commodity prices to detect correlations.
 2. Intercept and log graphs to characterize the volatility of each commodity.
 3. Loss analysis to predict profits and visualize kurtosis.
 4. Tangency portfolios (Markowitz efficiency portfolio frontier for expected market returns) and leverage analyses.
