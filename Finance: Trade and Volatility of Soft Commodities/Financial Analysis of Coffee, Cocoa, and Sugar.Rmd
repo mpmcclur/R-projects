@@ -14,7 +14,7 @@ Column {.tabset}
 
 ### Photonics + Soft Commodities?
 
-In order to increase R&D into ultrafast lasers, LaserMat Corp is looking to invest in a soft market commodity, such as green coffee arabica, sugar, or cocoa beans. The board of LaserMat wants to take advantage of backwardation of one of these commodities to secure future funds for sustained research, design, and manufacturing of state-of-the-art picosecond lasers. LaserMat anticipates strong demand of picosecond lasers in industrial applications and academic research within the next decade. Thus, the more liquid assets LaserMat has, the faster it can accelerate R&D into its line of lasers. We are asked to determine how far a $100 million investment into these commodities will go.
+In order to increase R&D into ultrafast lasers, LaserMat Corp is looking to invest in a soft market commodity, such as green coffee Arabica, sugar, or cocoa beans. The board of LaserMat wants to take advantage of backwardation of one of these commodities to secure future funds for sustained research, design, and manufacturing of state-of-the-art picosecond lasers. LaserMat anticipates strong demand of picosecond lasers in industrial applications and academic research within the next decade. Thus, the more liquid assets LaserMat has, the faster it can accelerate R&D into its line of lasers. We are asked to determine how far a $100 million investment into these commodities will go.
 
 Specifically, we are to:
 
@@ -33,7 +33,7 @@ Additional details:
 
 2.  Determine how revenue and/or expenses move in time, and, if possible, identify the drivers of a commodity. Each commodity has different drivers that increase or decrease revenue.
 
-3.  How much capital would the LaserMat need to penetrate into this market?
+3.  How much capital would the LaserMat need to penetrate into a selected market?
 
 4.  Briefly explore the financial portfolio of the commodity of choice.
 
@@ -42,7 +42,7 @@ Data at a Glance
 
 Column {data-width=600}
 -----------------------------------------------------------------------
-The kernel density function shows the general shape of the direction of cocoa, sugar, and Arabica coffee, while the time series plot shows the (absolute) size of returns of each commodity, with the most erratic being coffee. Normalized commodity prices are shown from 1980 to 2017. There appears to be a loose trend among the curves but not enough for us to claim the existence of any correlation.
+The kernel density function shows the general shape of the direction of cocoa, sugar, and Arabica coffee, whereas the time series plot shows the (absolute) size of returns of each commodity, with the most erratic being coffee. Normalized commodity prices are shown from 1980 to 2017. There appears to be a loose trend among the curves but not enough for us to claim the existence of any correlation.
 
 ```{r Data and Initial Exploration}
 #install.packages("pacman")
@@ -129,18 +129,16 @@ Column {.tabset}
 ### Preliminary Questions
 Important questions to be answered in our analysis.
 
-3.  What is the expected shortfall, or metric mean for risk capital, of adopting one of the commodities?
+1.  What is the expected shortfall (or tail of the distribution of returns) of adopting one of the commodities?
 
-4.  What sorts of returns can we expect based on the history of the market?
+2.  What sorts of returns can we expect based on the history of the market?
 
-5.  What statistical information can we glean to help us to determine which soft commodity market to penetrate?
+3.  What statistical information can we glean to help us to determine which soft commodity market to penetrate?
 
-6.  What does the probability density vs. returns plot for the commodities look like?
-
-7.  With respect to that plot, what does the tail look like, and what does it tell us about expected shortfall (ES) and value at risk (VaR)?
+4.  What does the probability density vs. returns plot for the commodities look like? With respect to this plot, what does the tail look like, and what does it tell us about expected shortfall (ES) and value at risk (VaR)?
 
 ### Overview of Commodities in the Market
-The intercept and log graphs plot the commodity prices vs. the [logarithmic] standard deviations of the volatility. The red lines are the least squares estimate and our 95% confidence interval (i.e., the percentage at which we must be correct 95% of the time), which are derived from rolling functions. Interestingly, the interval window for the intercepts of sugar and coffee are particularly good (virtually flat), where the majority of points fall within the confidence.
+The intercept and log graphs plot the commodity prices vs. the [logarithmic] standard deviations of the volatility. The red lines are the least-squares estimates and our 95% confidence interval (i.e., the percentage at which we must be correct 95% of the time), which are derived from rolling functions. Interestingly, the interval window for the intercepts of sugar and coffee are particularly good (virtually flat), where the majority of points fall within the confidence.
 
 ```{r }
 
@@ -188,14 +186,14 @@ autoplot.zoo(data.xts[,1:3]) + ggtitle(title.chg)
 autoplot.zoo(data.xts[,4:6]) + ggtitle(title.chg2)
 ```
 
-Autocorrelations among sizes and returns of each commodity are also shown. Points of interest include the confidence intervals (again denoted by dotted lines) as well as expecting 5% of the data to fall within the interval and have non-zero lag (i.e., lagged regression in the time domain). None of the three commodities show anything out of the ordinary.
+Autocorrelations among sizes and returns of each commodity are also shown. Points of interest include the confidence intervals (again denoted by dotted lines) as well as expecting 5% of the data to fall within the interval and have non-zero lags (i.e., lagged regression in the time domain). None of the three commodities show anything out of the ordinary.
 
 ```{r }
 acf(coredata(data.xts[,1:3])) # returns
 acf(coredata(data.xts[,4:6])) # sizes
 ```
 
-Cross-correlation functions of cocoa and sugar as well as sugar and coffee are presented to examine if, in terms of volatility, a change in one market leads to changes in the another. The volatility of cocoa and sugar are highly positively correlated, with lags 6 to 14, meaning the volatility of one will be met by the other months later. Another stark contrast is that both cocoa and sugar are negatively correlated with coffee -- there are strong peaks and lags all around. This seems to suggest that the drivers of the volatility of coffee are inversely proportional, with a large temporal lag, to those of cocoa and sugar. Although this information can help us, even if we notice an event in one commodity that may affect our chosen commodity, it will be difficult to directly translate the lags shown here into a precise time at which the volatilities will occur. They may serve more as a "brace for impact" measure.
+Cross-correlation functions of cocoa and sugar as well as sugar and coffee are presented to examine if, in terms of volatility, a change in one market leads to changes in the another. The volatility of cocoa and sugar are highly positively correlated, with lags 6 to 14, meaning the volatility of one will be met by the other months later. Another stark contrast is that both cocoa and sugar are negatively correlated with coffee since there are sharp peaks and lags all around, suggesting that the drivers of the volatility of coffee are inversely proportional, with a large temporal lag, to those of cocoa and sugar. Although this information can help us, even if we notice an event in one commodity that may affect our chosen commodity, it will be difficult to directly translate the lags shown here into a precise time at which the volatility will occur. They may serve more as a "brace for impact" measure.
 
 ```{r }
 
@@ -253,8 +251,8 @@ cocoa_coffee_vol <- run_ccf(one, three, main = title2, lag = 20, color = "red")
 sugar_coffee_vol <- run_ccf(two, three, main = title3, lag = 20, color = "red")
 ```
 
-These two tables provide descriptive statistics between commodity direction (first table) as well as commodity size (volatility, second table). Coffee has the largest kurtosis and skewness among the three. Each commodity shows a mean negative direction.
-This information, along with what we have discovered in the plots above, indicate that coffee is the misfit between the three, in that it deviates most independently. We will need to observe the losses in order to translate this behavior to dollars.
+These two tables provide descriptive statistics between commodity direction (first table) and commodity size or volatility (second table). Coffee has the largest kurtosis and skewness among the three. Each commodity shows a mean negative direction.
+This information, along with what we have discovered in the plots above, indicate that coffee is the misfit between the three in that it deviates most independently. We will need to observe the losses in order to translate this behavior to dollars.
 
 ```{r }
 # Functions and code structure below are borrowed from previous project 3.
@@ -281,11 +279,11 @@ knitr::kable(answer2)
 ```
 
 ### Loss Analysis
-What do the losses for each commodity look like and how much capital would the LaserMat need for adoption of one commodity?
+What do the losses for each commodity look like, and how much capital would LaserMat need to invest (i.e., what is the barrier of entry)?
 
-Plotting the expected shortfall allows us to see what are our expected losses. Plotted are probability density vs. returns plots for cocoa, sugar, and coffee.  For cocoa, ES = 12.19 and VaR = 10.12; for sugar, ES = 14.8 and VaR = 15.18; and for coffee, ES = 13.42 and VaR = 12.33. The predicted profit is less for cocoa and highest for coffee. Interestingly, sugar and coffee show larger kurtosis on the right tail compared to the left (the left-skewness is apparent here). We can also see that coffee shows less loss compared to cocoa and sugar.
+Plotting the expected shortfall allows us to see what are our expected losses. Plotted are probability density vs. returns plots for cocoa, sugar, and coffee.  For cocoa, ES = 12.19 and VaR = 10.12; for sugar, ES = 14.8 and VaR = 15.18; and for coffee, ES = 13.42 and VaR = 12.33. The predicted profit is lowest for cocoa and highest for coffee. Interestingly, sugar and coffee show larger kurtosis on the right tail compared to the left (the left-skewness is apparent here). We can also see that coffee shows less loss compared to cocoa and sugar.
 
-Aside from the ES and VAR callouts, the kurtosis is also of interest since that shows us the volatility. Cocoa shows is least volatile, while coffee is the most -- this concurs with previous analyses. Sugar doesn't get away scot-free; the right tail of sugar is also hefty.
+Aside from the ES and VAR callouts, the kurtosis is also of interest since it characterizes volatility. Cocoa is least volatile, whereas coffee is the most volatile. This concurs with previous analysis (see "Overview of Commodities in the Market"). Sugar doesn't get away scot-free, though, since it features a large right tail.
 
 ```{r }
 # Functions and code structure below are borrowed from previous project 3.
@@ -351,7 +349,7 @@ p3
 
 ```
 
-Below is the value of the portfolio. Calculated is what the value of the portfolio would look like on day 1, 2, etc. using today's values. >1 means worth more than today, and <1 means less. In general, we are more concerned with losing the gain as opposed to losses in general. Losses will always occur, but losing gain potentially loosens our hold and weakens our recovery from losses. The table shows statistics for the losses of each commodity multiplied by the weight (position multiplied by price). Notice cocoa is highest, while sugar and coffee are the lowest.
+Below is the value of the portfolio. Calculations show what value of the portfolio would look like on day 1, 2, etc, using today's values. >1 means it's worth more than today, and <1 means it's worth less. In general, we are more concerned with losing the gain in particular than losses in general. Losses will always occur, but losing gain potentially loosens our hold and weakens our recovery from losses. The table shows statistics for the losses of each commodity multiplied by the weight (position multiplied by price). Notice cocoa is highest, and sugar and coffee are the lowest.
 
 ```{r }
 # Functions and code structure below are borrowed from previous project 3.
@@ -368,9 +366,9 @@ head(exp(data.r/100)) # do this to convert from percentage to decimal since we n
 data_moments((exp(data.r/100) -1)* weights.rf) #losses
 ```
 
-The 95% loss limits plot shows dollar losses on a U.S. cents per pound per U.S. quantity basis. We will need approximatey $100 to cover the possibilty of the many sampled scenarios we have calculated to reach the expected shortfall 95th percentile to absorb loss at a VaR threshold. There are losses further out to the right.
+The 95% loss limits plot shows dollar losses on a U.S. cents per pound per U.S. quantity basis. We will need approximately $100 to cover the possibility of the many sampled scenarios we have calculated to reach the expected shortfall's 95th percentile and absorb loss at a VaR threshold. There are losses further to the right.
 
-The threshold exceedances plot below is really the value of our portfolio. The grid simulates the minimum loss to maximum loss, or how much we have exceeded a given threshold, given many thresholds. The exceedance values are on the vertical scale to show the mean exceedances. The black line is the average of the data whenever it exceeds a certain value. At a 95% probability, the black line is between the two red lines. The mean exceedance is increasingly unstable past 25, so we're looking to maintain stability prior to this.
+The threshold exceedances plot below is really the value of our portfolio. The grid simulates the minimum loss to maximum loss, or how much we have exceeded a given threshold, given many thresholds. The exceedance values are on the vertical scale to show the mean exceedances. The black line is the average of the data whenever it exceeds a certain value. At a 95% probability, the black line is between the two red lines. The mean exceedance is increasingly unstable past 25, so we're looking to maintain stability prior to this point.
 
 ```{r }
 # Functions and code structure below are borrowed from previous project 3.
@@ -415,7 +413,7 @@ p <- ggplot(mep.df, aes( x= threshold, y = threshold.exceedances)) + geom_line()
 p
 ```
 
-What do the extremes look like? The tail of the distribution is shown in more detail. In the estimated tail probabilities plot, we have a range of capital depending on our 95% confidence interval. The range of ~93 to ~110 provides the level of confidence. On the lefthand side, the levels are in the tail of the loss distribution.
+What do the extremes look like? Let's look at the tail of the distribution in more detail. In the estimated tail probabilities plot, we have a range of capital depending on our 95% confidence interval. The range of ~93 to ~110 provides the level of confidence. On the left-hand side, the levels are in the tail of the loss distribution.
 
 ```{r }
 # Functions and code structure below are borrowed from previous project 3.
@@ -447,13 +445,13 @@ loss.plot
 showRM(fit, alpha = 0.99, RM = "ES", method = "BFGS") 
 ```
 
-Given what has been analyzed so far, my suggestion is to adopt sugar, as it has more promising returns and is relatively less volatile. Cocoa is most likely the safest option. However, coffee could also be a viable a choice, despite its volatility. We could take the risk of coffee and see reasonably decent returns. However, in addition this analysis, I am leery of coffee's economic future in general. With global climate change reaching warmer temperatures, predictions concerning the coffee industry indicate that worldwide conditions in coffee bean growth and harvesting will become increasingly difficult, especially for the more lucrative, "premium" coffee beans such as arabica. If LaserMat wishes to invest in a popular soft market commodity, then it will need to do so knowing that the good will be both accessible and needed in 10 years, 20 years, and so on. There is simply too much uncertainty with coffee, and I do not advise investing in the coffee market.
+Given what has been analyzed so far, my suggestion is to adopt sugar, as it has more promising returns and is relatively less volatile. Cocoa is most likely the safest option. However, coffee could also be a viable a choice, despite its volatility. We could take the risk of coffee and see reasonably decent returns. However, in addition to this analysis, I am leery of coffee's economic future in general. In the face of climate change and warmer temperatures, predictions concerning the coffee industry indicate that worldwide conditions in coffee bean growth and harvesting will become increasingly difficult, especially for more lucrative, "premium" beans like Arabica. If LaserMat wishes to invest in a popular soft market commodity, then it will need to do so knowing that the good will be both accessible and needed in 10 years, 20 years, and so on. There is simply too much uncertainty with coffee.
 
 Analyses in the remaining tabs explore the portfolio of sugar in more detail.
 
-Porfolio Analysis
+Portfolio Analysis
 =======================================================================
-Tangency porfolios as well as a leverage analysis are explored with respect to sugar.
+Tangency portfolios as well as a leverage analysis are explored with respect to sugar.
 
 row {.tabset }
 -----------------------------------------------------------------------
@@ -461,7 +459,7 @@ row {.tabset }
 ### Markowitz Model: Tangency Portfolios
 The Markowitz efficiency portfolio frontier, under CAPM assumptions, serves as a benchmark for expected returns. Models were developed for cocoa, sugar, and coffee in order to optimize the holdings of each of the three commodities.
 
-The blue line represents the market portfolio for cocoa, sugar, or coffee. The red line is the capital market line, which is the line from the risk-free investment throughout the market portfolio, representing the highest-expected return available for any level of volatility. Sugar and coffee fall along the capital market line, which is what we want. Cocoa does not. The expected return for sugar is ~19% at ~7% volatility.
+The blue line represents the market portfolio for cocoa, sugar, or coffee. The red line is the capital market line, which is the line from the risk-free investment throughout the market portfolio, representing the highest expected return for any level of volatility. Sugar and coffee fall along the capital market line, which is what we want. Cocoa does not. The expected return for sugar is ~19% at ~7% volatility.
 
 ```{r}
 # Functions and code structure below are borrowed from previous project 4.
@@ -585,7 +583,7 @@ p3
 row {.tabset }
 -----------------------------------------------------------------------
 
-### Market Leverage Analysis: Sugar Volatility
+### Market Leverage Analysis: Volatility of Sugar
 
 ```{r}
 # Functions and code structure below are borrowed from previous project 4.
@@ -605,7 +603,7 @@ out <- lapply(datalist, function(data){
 image_animate(img, fps = .5)
 ```
 
-Shown are regressions of sugar returns versus the volatility of sugar, beginning with 1987. There are not very many flatlines here; most are either increasing or decreasing, suggesting the price of sugar may be a driver of the volatility of sugar.
+Shown are regressions of sugar returns versus the volatility of sugar, beginning in 1987. There are few flatlines here; most are either increasing or decreasing, suggesting that price of sugar may be a driver of volatility.
 
 References
 =======================================================================
@@ -613,10 +611,10 @@ References
 **Data and Structure**
 
 - FRED for data, which were individual datasets I compiled into one document: https://fred.stlouisfed.org/series/PCOCOUSDM, https://fred.stlouisfed.org/series/PSUGAISAUSDM, https://fred.stlouisfed.org/series/PCOFFOTMUSDM
-- Professor Bill Foote for the bulk structure of the code.
-- StackExchange for helping to troubleshoot issues pertaining to functions I created or sections of code from previous projects that required tweaking.
+- "Financial Engineering Analytics: A Practice Manual Using R" by William G. Foote. This text and its author provided the shape of the code as well as the structure and flow.
+- StackExchange for helping to troubleshoot issues pertaining to functions I created or sections of code from that required tweaking.
 
-**References**
+**Citations**
 
 Berk, J. B., & DeMarzo, P. M. (2017). Corporate Finance: The Core (4th ed.). Harlow: Pearson.
 
