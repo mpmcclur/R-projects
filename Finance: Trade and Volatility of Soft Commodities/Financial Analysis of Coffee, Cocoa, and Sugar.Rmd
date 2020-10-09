@@ -1,5 +1,5 @@
 ---
-title: "Exploring the Markets of Soft Commodity"
+title: "Exploring Soft Commodities Markets"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
@@ -12,15 +12,15 @@ Business Context
 Column {.tabset}
 -----------------------------------------------------------------------
 
-### Photonics + Soft Commodities?
+### Photonics and Beyond
 
-In order to increase R&D into ultrafast lasers, LaserMat Corp is looking to invest in a soft market commodity, such as green coffee Arabica, sugar, or cocoa beans. The board of LaserMat wants to take advantage of backwardation of one of these commodities to secure future funds for sustained research, design, and manufacturing of state-of-the-art picosecond lasers. LaserMat anticipates strong demand of picosecond lasers in industrial applications and academic research within the next decade. Thus, the more liquid assets LaserMat has, the faster it can accelerate R&D into its line of lasers. We are asked to determine how far a $100 million investment into these commodities will go.
+In order to increase R&D into ultrafast lasers, LaserMat Inc. is looking to invest in a soft market commodity, such as Arabica coffee beans, sugar, or cocoa beans. The board of LaserMat wants to take advantage of potential investment opportunities in one of these commodities to secure future funds for sustained research, design, and manufacturing of state-of-the-art picosecond lasers. LaserMat anticipates strong demand of picosecond lasers in industrial applications and academic research within the next decade. Thus, the more liquid assets LaserMat has, the faster it can accelerate R&D into its line of lasers. As a financial analyst, I have been tasked with investigating the matter and making a recommendation to the board.
 
-Specifically, we are to:
+Specifically, I will:
 
-1.  Retrieve and analyze data about potential commodities into which to diversify.
+1.  Retrieve and analyze the import price index of the three aforementioned commodities so as to recommend whether the company should make an investment in ETFs (e.g., CANE) in one, two, all three, or none of the commodities.
 2.  Compare all three commodities to determine their historic and future trends as well as volatility.
-3.  Determine the optimal combination of cocoa beans, sugar, or coffee to trade.
+3.  Determine the optimal combination of coffee, sugar, or cocoa beans to trade.
 
 Additional details:
 
