@@ -1,5 +1,5 @@
 # Intro
-This financial analytics project explores the import price index of three soft commodities (Arabica coffee beans, cocoa beans, and sugar) to determine whether a fictionalized photonics company should make an investment in ETFs (e.g., CANE) or even futures (e.g., via NYMEX), in one, two, all three, or none of the commodities.
+This financial analytics project explores the import price index of three soft commodities (Arabica coffee beans, cocoa beans, and sugar) to determine whether a fictionalized photonics company should make an investment in ETFs (e.g., CANE) in one, two, all three, or none of the commodities.
 
 Use the provided CSV file and execute the .RMD file in RStudio to generate a dashboard that seeks to investigate the following:
 
