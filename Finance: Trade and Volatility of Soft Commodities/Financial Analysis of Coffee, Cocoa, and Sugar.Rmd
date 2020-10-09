@@ -279,7 +279,7 @@ knitr::kable(answer2)
 ```
 
 ### Loss Analysis
-What do the losses for each commodity look like, and how much capital would LaserMat need to invest (i.e., what is the barrier of entry)?
+What do the losses for each commodity look like, and how much capital would LaserMat need to invest (i.e., what is the barrier to entry)?
 
 Plotting the expected shortfall allows us to see what are our expected losses. Plotted are probability density vs. returns plots for cocoa, sugar, and coffee.  For cocoa, ES = 12.19 and VaR = 10.12; for sugar, ES = 14.8 and VaR = 15.18; and for coffee, ES = 13.42 and VaR = 12.33. The predicted profit is lowest for cocoa and highest for coffee. Interestingly, sugar and coffee show larger kurtosis on the right tail compared to the left (the left-skewness is apparent here). We can also see that coffee shows less loss compared to cocoa and sugar.
 
