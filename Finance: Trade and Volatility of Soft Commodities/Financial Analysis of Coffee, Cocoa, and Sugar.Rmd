@@ -14,12 +14,12 @@ Column {.tabset}
 
 ### Photonics and Beyond
 
-In order to increase R&D into ultrafast lasers, LaserMat Inc. is looking to invest in a soft market commodity, such as Arabica coffee beans, sugar, or cocoa beans. The board of LaserMat wants to take advantage of potential investment opportunities in one of these commodities to secure future funds for sustained research, design, and manufacturing of state-of-the-art picosecond lasers. LaserMat anticipates strong demand of picosecond lasers in industrial applications and academic research within the next decade. Thus, the more liquid assets LaserMat has, the faster it can accelerate R&D into its line of lasers. As a financial analyst, I have been tasked with investigating the matter and making a recommendation to the board.
+In order to expand its product line of ultrafast lasers, LaserMat Inc. is looking to invest in a commodities market for additional capital. Specifically, the company is interested in investing in soft commidities such as Arabica coffee beans, sugar, or cocoa beans. The board of LaserMat wants to take advantage of potential investment opportunities in one of these commodities to secure future funds for sustained research, design, and manufacturing of state-of-the-art picosecond lasers. LaserMat anticipates strong demand in industrial applications and academic research circles within the next decade. Thus, the more liquid assets LaserMat has, the better it can leverage its R&D resources. As a financial analyst, I have been tasked with investigating the matter and making a recommendation to the board.
 
 Specifically, I will:
 
 1.  Retrieve and analyze the import price index of the three aforementioned commodities so as to recommend whether the company should make an investment in ETFs (e.g., CANE) in one, two, all three, or none of the commodities.
-2.  Compare all three commodities to determine their historic and future trends as well as volatility.
+2.  Compare all three commodities to determine their historic and future trends as well as the presence of volatility.
 3.  Determine the optimal combination of coffee, sugar, or cocoa beans to trade.
 
 Additional details:
