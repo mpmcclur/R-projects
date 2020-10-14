@@ -198,8 +198,3 @@ positions <- c("<1", "1", "6", "11", ">11","Other") # write positions of labels 
 nir_bar <- qplot(Label, facets = ~ Item, data = nir_data,geom="bar", main="Individual Bar Plots of Qty. Purchased", xlab = "Qty. Purchased", ylab = "Count") + theme(plot.title = element_text(hjust = 0.5)) + scale_x_discrete(limits = positions)+ scale_y_continuous(breaks = seq(0, 400, 100), lim = c(0,400))#+theme(axis.text=element_text(size=4))
 ggplotly(nir_bar)
 ```
-
-
-
-
-
