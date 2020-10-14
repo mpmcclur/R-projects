@@ -12,13 +12,7 @@ runtime: shiny
 #  install.packages("devtools")
 #devtools::install_github("rstudio/rsconnect")
 #install.packages("pacman")
-options(repos="https://cran.rstudio.com" )
-install.packages("flexdashboard")
-install.packages("tidyverse")
-install.packages("grid")
-install.packages("readxl")
-install.packages("ggplot2")
-install.packages("plotly")
+#options(repos="https://cran.rstudio.com" )
 library(flexdashboard)
 library(tidyverse)
 library(grid)
@@ -31,15 +25,13 @@ library(plotly)
 Intro
 =======================================================================
 
-This report, which implements Shiny API functionality, reviews quantity sold data for two types of laser diodes (LDs) at a company: one dataset consists of LDs in the visible wavelength range, while the other dataset is the near-infrared (NIR) range. Included are histograms to show distributions as well as bar plots to show which batches are most popular (e.g., is volume pricing for 6 more popular than volume pricing for 11?).
+The 2014-2019 laser diode sales data will be split into two datasets: visible LDs and NIR laser diodes.
 
-First, we look at the full distribution of each dataset, which is left skewed. However, viewing the full distribution means we also see the outliers, which stretch all the way to 1500 (for visible) and 2184 (for NIR). See the two graphs below.
+The full distribution of each dataset is left skewed. However, viewing the full distribution means we also see the outliers, which stretch all the way to 1500 (for visible) and 2184 (for NIR). See the two graphs below.
 
-We obviously want to ignore the distribution tail that stretches out that far, and I think honing in on the finer details of the distribution from 1-15 quantities sold is more telling, since volume pricing is offered in 1, 6, and 11 pieces. These  tabs show more histograms as well as a bar plot to see the quantities purchased in this range. The Visible LD Graphs and NIR LD Graphs tabs show more histograms as well as a bar plot to see the quantities purchased in this range.
+We obviously want to ignore distributions whose tails stretch that far, and I think homing in on the finer details of the distribution from 1-15 is more telling since volume pricing is offered in 1, 6, and 11 pieces. The Visible LD Graphs and NIR LD Graphs tabs show more histograms and a bar plot to see the quantities purchased in this range.
 
-I think the bar plots are particularly telling about which volume pricing option is most popular. LDs sold in quantities of 1 are the most popular, usually followed by the "Other" category, which encompasses quantities that are >1 but <6 as well as >6 but less <11; basically, quantities that are in-between the volume pricing batches.
-
-<b>Note</b>: Since these data are proprietary, only the code and text are shown in this report.
+The bar plots indicate that volume pricing is most popular. LDs sold in quantities of 1 are the most popular, usually followed by the "Other" category, which encompasses quantities that are >1 but <6 as well as >6 but <11; basically, quantities that are between volume pricing batches.
 
 ```{r Data Vis}
 vis_data <- read_excel("LD_sales_2019.xlsx",sheet="Visible",col_names = TRUE, col_types = NULL, na = "", skip = 0)
@@ -105,7 +97,7 @@ sliderInput("bw_adjust", label = "Bandwidth adjustment:",
 ```
 
 <b>Individual Histograms tab:</b><br />
-Below are individual histograms (organized in a lattice form to display all item #s) showing the distribution of LD quantities sold from 1 to 15. Note that item #s L405G2, L450G1, L515A1, and L785H1 offer volume pricing for 1, 10, 20, 51, and 101 pieces.
+These individual histograms (organized in a lattice form to display all item #s) show the distribution of LD quantities sold from 1 to 15. Note that item #s L405G2, L450G1, L515A1, and L785H1 offer volume pricing for 1, 10, 20, 51, and 101 pieces.
 
 <b>Bar Plots tab:</b><br />
 The bar plots (again, in a lattice to display all item #s) count the number of LDs purchased in one of 6 groups: <1, 1, 6, 11, >11, and "Other". The "Other" category simply catches quantities purchased between the volume pricing options, i.e., it contains the number of LDs purchased (x) in these quantities:
@@ -165,7 +157,7 @@ sliderInput("bw_adjust", label = "Bandwidth adjustment:",
             min = 1, max = 2, value = 1.5, step = 0.1)
 ```
 <b>Individual Histograms tab:</b><br />
-Below are individual histograms showing the full distribution of LD quantities sold, limited from 1 to 15. If outliers are included, then there will only be one large bar that spans 0-50, which doesn't provide enough detail. Note that item #s L405G2, L450G1, L515A1, and L785H1 offer volume pricing for 1, 10, 20, 51, and 101 pieces.
+The individual histograms show the full distribution of LD quantities sold, limited from 1 to 15. If outliers are included, then there will only be one large bar that spans 0-50, which doesn't provide enough detail. Note that item #s L405G2, L450G1, L515A1, and L785H1 offer volume pricing for 1, 10, 20, 51, and 101 pieces.
 
 <b>Bar Plots tab:</b><br />
 These bar plots show the frequency of quantities purchased, categorized into 6 groups: <1, 1, 6, 11, >11, and Other. The Other category contains the number of LDs purchased (x) in these quantities:
