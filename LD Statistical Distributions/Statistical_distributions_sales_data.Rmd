@@ -24,14 +24,16 @@ library(plotly)
 
 Intro
 =======================================================================
+Column {data-width=1200}
+-----------------------------------------------------------------------
 
-The 2014-2019 laser diode sales data will be split into two datasets: visible LDs and NIR laser diodes.
+This dashboard presents data of a company's sales of visible and NIR laser diodes from 2014 to 2019. Specifically, the aim to determine the most popular quantity of items sold. Items may be purchased individually or at pre-determined "volume pricing" options (i.e., batches of 1, 6, or 11 pieces).
 
-The full distribution of each dataset is left skewed. However, viewing the full distribution means we also see the outliers, which stretch all the way to 1500 (for visible) and 2184 (for NIR). See the two graphs below.
+The full distribution of each dataset (visible and NIR) is left skewed, meaning smaller quantites are purchased more frequently than larger ones. Viewing the full distribution means we also see outliers, which stretch all the way to 1500 pieces sold for visible and 2184 pieces sold for NIR. See the two graphs below.
 
-We obviously want to ignore distributions whose tails stretch that far, and I think homing in on the finer details of the distribution from 1-15 is more telling since volume pricing is offered in 1, 6, and 11 pieces. The Visible LD Graphs and NIR LD Graphs tabs show more histograms and a bar plot to see the quantities purchased in this range.
+We want to ignore distributions whose tails stretch that far; homing in on the finer details of the distribution from 1-15 is more telling since we specifically want to see if volume pricing options are popular. The "Visible LD Graphs" and "NIR LD Graphs" tabs show more histograms and a bar plot of the quantities purchased in the range of 1-15 pieces.
 
-The bar plots indicate that volume pricing is most popular. LDs sold in quantities of 1 are the most popular, usually followed by the "Other" category, which encompasses quantities that are >1 but <6 as well as >6 but <11; basically, quantities that are between volume pricing batches.
+The bar plots indicate that volume pricing is not especially popular. Diodes sold in quantities of 1 are the most popular, usually followed by the "Other" category, which encompasses quantities that are >1 but <6 as well as >6 but <11; basically, quantities that are between volume pricing batches.
 
 ```{r Data Vis}
 vis_data <- read_excel("LD_sales_2019.xlsx",sheet="Visible",col_names = TRUE, col_types = NULL, na = "", skip = 0)
@@ -73,13 +75,22 @@ nir_data$Label <- case_when(
     nir_data$Quantity == 11 ~ as.character("11"),
     nir_data$Quantity > 11 ~ as.character(">11"),
     TRUE ~ as.character("Other"))
+
+#hist(vis_data$Quantity, breaks=100, xlab = "Qty. Purchased",main = paste("Full Distribution of Visible LDs"))
+#hist(nir_data$Quantity, breaks=100, xlab = "Qty. Purchased",main = paste("Full Distribution of NIR LDs"))
 ```
 
 ```{r }
-hist(vis_data$Quantity, breaks=100, xlab = "Qty. Purchased",main = paste("Full Distribution of Visible LDs"))
-hist(nir_data$Quantity, breaks=100, xlab = "Qty. Purchased",main = paste("Full Distribution of NIR LDs"))
+p1 = ggplot(vis_data, aes(vis_data$Quantity)) +geom_histogram() + labs(title="Full Distribution of Visible LDs", x = "Qty. Purchased", y = "Frequency")
+p2 = ggplot(nir_data, aes(nir_data$Quantity)) +geom_histogram() + labs(title="Full Distribution of NIR LDs",x = "Qty. Purchased", y = "Frequency")
+
+ggplotly(p1, width = 700, height = 400)
+ggplotly(p2, width = 700, height = 400)
 ```
 
+```{r }
+
+```
 
 Visible LD Graphs
 =======================================================================
